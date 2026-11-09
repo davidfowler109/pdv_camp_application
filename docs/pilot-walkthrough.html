@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es-PA">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palabra de Vida · Recorrido del piloto</title>
+<style>
+:root{color-scheme:light; font:16px/1.55 system-ui,sans-serif;color:#20352a;background:#f3f2e8}
+*{box-sizing:border-box}body{margin:0}header{background:#174b37;color:white;padding:18px 24px}main{max-width:760px;margin:auto;padding:24px 16px}
+h1{font:700 2rem/1.1 Georgia,serif}h2{font-size:1.25rem;margin-top:0}p{margin:.5rem 0}
+section{background:#fffdf7;border:1px solid #d5ded3;border-radius:14px;padding:20px;margin:16px 0}
+label{display:block;margin:.75rem 0}input,select,button{font:inherit;max-width:100%;padding:8px;border:1px solid #82978a;border-radius:8px}button{background:#174b37;color:white;min-height:44px;margin-top:10px}button:disabled{opacity:.6}
+small{display:block;color:#3d594a}output{display:block;margin-top:8px}li{margin-bottom:.3rem}dd{margin:0 0 .5rem}dt{font-weight:700}.hint{padding:10px;background:#e5efe5;border-radius:8px}
+</style>
+<header><strong>Palabra de Vida</strong> · Recorrido del piloto con datos ficticios</header>
+<main>
+<h1>De la inscripción a la llegada</h1>
+<p>Semana de ejemplo · 11 a 12 años · 250 cupos</p>
+<section>
+<h2>1. Registrar una solicitud en papel</h2>
+<p>Un pastor ayuda a Isabel Mora, de 11 años, y presencia la firma de su madre. La familia entrega el formulario en papel y pide confirmar el cupo mientras la autorización de participación está pendiente.</p>
+<dl><dt>Dirección del campista</dt><dd>La última casa al final de la calle, después de la iglesia.</dd><dt>Contacto de emergencia</dt><dd>Laura Mora, madre · Contacto mediante el pastor, revisado por el equipo.</dd><dt>Salud y transporte</dt><dd>Sin alergias reportadas · Llega en el bus Central.</dd><dt>Beca</dt><dd>Código ficticio CENTRAL-03, distribuido por el pastor · Beca parcial de $30 sobre una cuota de ejemplo de $80.</dd></dl>
+<button id="register">Registrar consentimiento firmado y solicitud</button>
+<output id="registered" role="status"></output>
+</section>
+<section id="review" hidden>
+<h2>2. Revisar la inscripción</h2>
+<p>Autorización de datos registrada. Permiso de participación pendiente.</p>
+<form id="payment"><label>Monto del pago de ejemplo ($) <input id="amount" type="number" min="0.01" max="50" step=".01" value="20" required></label><label>Referencia de pago <input id="reference" value="DEP-DEMO-01" required></label><small>El recibo es opcional cuando el campamento lo utiliza para verificar depósitos.</small><button id="pay">Registrar pago de ejemplo</button></form>
+<output id="balance" role="status">Saldo pendiente: $50.00.</output>
+<label>Fecha opcional de seguimiento <input id="followup" type="date"></label>
+<button id="confirm">Confirmar cupo</button><output id="confirmed" role="status"></output>
+</section>
+<section id="arrival" hidden>
+<h2>3. Registrar llegada y asignar dormitorio</h2>
+<p>Bus Central · Isabel Mora</p>
+<button id="present">Marcar presente</button>
+<div id="roomPanel" hidden>
+<label>Dormitorio <select id="room"><option value="cedro">Cedro · Sugerido · 2 camas disponibles</option><option value="pino">Pino · 1 cama disponible</option></select></label>
+<output id="team" role="status"></output>
+<label id="reasonLabel" hidden>Motivo del cambio <input id="reason"></label>
+<button id="assign">Guardar dormitorio</button>
+<output id="assignment" role="status"></output>
+<p class="hint">Permiso de participación pendiente. Mantener supervisión mientras el equipo de inscripciones lo resuelve. La campista aún no puede participar en actividades.</p>
+</div>
+</section>
+<section>
+<h2>Para conversar con el equipo</h2>
+<ul><li>¿Quién registra el formulario en papel y qué necesita para confiar en la firma?</li><li>¿El saldo y el permiso pendiente se entienden de un vistazo?</li><li>¿Qué falta en la pantalla cuando llega un bus?</li><li>¿En qué casos cambiarían el dormitorio sugerido?</li></ul>
+</section>
+</main>
+<script>
+const get = id => document.getElementById(id);
+const teams = {cedro:'Guía de Cabañas: Lucía · Equipantes: Ana y Sofía',pino:'Guía de Cabañas: Elena · Equipante: María'};
+get('register').onclick = () => {
+  get('register').disabled = true;
+  get('registered').textContent = 'Solicitud recibida. Beca parcial aplicada. Firma de la madre, testigo: pastor.';
+  get('review').hidden = false;
+};
+get('payment').onsubmit = event => {
+  event.preventDefault();
+  const amount = Number(get('amount').value);
+  get('balance').textContent = 'Saldo pendiente: $' + (50 - amount).toFixed(2) + '.';
+  get('pay').disabled = true;
+  get('amount').readOnly = get('reference').readOnly = true;
+};
+get('confirm').onclick = () => {
+  get('confirm').disabled = true;
+  const date = get('followup').value;
+  get('confirmed').textContent = 'Cupo confirmado. 125 de 250 cupos reservados. Permiso pendiente.' + (date ? ' Seguimiento: ' + date + '.' : '');
+  get('arrival').hidden = false;
+};
+function updateRoom() {
+  const room = get('room').value;
+  get('team').textContent = teams[room];
+  get('reasonLabel').hidden = room === 'cedro';
+  get('assignment').textContent = '';
+}
+get('present').onclick = () => {
+  get('present').disabled = true;
+  get('present').textContent = 'Presente';
+  get('roomPanel').hidden = false;
+  updateRoom();
+};
+get('room').onchange = updateRoom;
+get('assign').onclick = () => {
+  const room = get('room').value;
+  if (room === 'pino' && !get('reason').value.trim()) {
+    get('assignment').textContent = 'Indica el motivo del cambio.';
+    get('reason').focus();
+    return;
+  }
+  get('assignment').textContent = room === 'cedro' ? 'Dormitorio Cedro asignado.' : 'Dormitorio Pino asignado. Motivo registrado.';
+};
+</script>
+</html>

@@ -1,0 +1,137 @@
+:root {
+  color-scheme: light;
+  font: 16px/1.5 system-ui, sans-serif;
+  --brand-teal: #064d61;
+  --staff-slate: #344b63;
+  --page-background: #eff3f7;
+  --surface: #fff;
+  --text: #223447;
+  --muted: #4b6074;
+  --line: #ccd8e3;
+  --control-border: #74889a;
+  --tint: #e2eaf2;
+  --action: var(--staff-slate);
+  color: var(--text);
+  background: var(--page-background);
+}
+*{box-sizing:border-box}body{margin:0}header{background:var(--brand-teal);color:white}header>div{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;max-width:1120px;margin:auto;padding:12px 20px}
+.brand{display:flex;align-items:center;gap:15px}.brand img{width:118px;height:54px;object-fit:contain}.brand small{color:#e2eaf2}main{max-width:1120px;margin:auto;padding:26px 20px}h1{font:700 clamp(28px,5vw,42px)/1.1 system-ui,sans-serif;margin:0}h2{font-size:22px;margin:0 0 10px}h3{margin:0}p{margin:.45rem 0 1rem}
+.card{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}.dorms{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,325px),1fr));gap:12px}
+a{color:var(--action)}input:is([type=checkbox],[type=radio]){accent-color:var(--action)}label{display:grid;gap:4px;min-width:0}input,select,button{font:inherit;min-height:42px;border:1px solid var(--control-border);border-radius:7px;padding:7px 9px;min-width:0}input:is([type=checkbox],[type=radio]){min-height:auto;width:18px;height:18px}button{background:var(--action);color:white;margin-top:10px}header button{background:var(--brand-teal);border-color:var(--line);margin-top:0}.check{display:flex;align-items:center;gap:6px;margin:8px 0}fieldset{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:6px 12px}.badge{display:inline-block;background:var(--tint);border-radius:18px;padding:3px 9px;margin:4px 0}.warn{background:#faebcb}.muted{color:var(--muted)}.notice{padding:10px;background:var(--tint);border-radius:8px}.actions{display:flex;gap:8px;flex-wrap:wrap}details summary{margin:7px 0;cursor:pointer}output{display:block}
+
+.registration-form .grid { align-items: start; }
+.registration-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.registration-form select {
+  width: 100%;
+  height: 44px;
+  min-width: 0;
+  line-height: 1.25;
+}
+.registration-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  font: inherit;
+  resize: vertical;
+}
+.registration-form .check { align-items: baseline; }
+.registration-form .check input { flex-shrink: 0; }
+.required-mark { color: #962f22; font-weight: 700; }
+.required-note { color: var(--muted); font-size: .875rem; }
+
+label[hidden] { display: none; }
+
+.staff-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; background: var(--tint); border-bottom: 1px solid var(--line); }
+.staff-nav a { color: var(--action); padding: 10px 12px; text-decoration: none; border-radius: 8px 8px 0 0; }
+.staff-nav a:hover { text-decoration: underline; }
+.staff-nav a[aria-current="page"] { background: var(--brand-teal); color: white; }
+.balance-breakdown { max-width: 400px; }
+.balance-breakdown div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.balance-breakdown div:last-child { border-top: 1px solid var(--line); font-weight: 700; }
+.balance-breakdown dd { margin: 0; white-space: nowrap; }
+
+/* Share the label and control rows so wrapped labels cannot stagger fields. */
+.grid:has(> label):not(:has(> :not(label))) > label {
+  grid-row: span 2;
+}
+.grid:has(> label):not(:has(> :not(label))) > label:not(.check) {
+  align-self: stretch;
+  grid-template-rows: subgrid;
+  row-gap: 4px;
+}
+.grid:has(> label):not(:has(> :not(label))) > label:not(.check) > :is(input, select, textarea) {
+  align-self: start;
+}
+
+.action-link { display: inline-block; background: var(--action); color: white; border: 1px solid var(--action); border-radius: 7px; padding: 8px 12px; text-decoration: none; }
+.action-link.secondary { background: var(--surface); color: var(--action); }
+.action-link:hover { text-decoration: underline; }
+.follow-up-queue { margin-top: 20px; }
+.roster-filters { margin: 16px 0; }
+.roster-scroll { overflow-x: auto; }
+.roster-table { width: 100%; border-collapse: collapse; min-width: 620px; text-align: left; }
+.roster-table th, .roster-table td { border-bottom: 1px solid var(--line); padding: 10px 12px; vertical-align: top; }
+.roster-table thead { background: var(--tint); }
+.roster-table .money { text-align: right; white-space: nowrap; }
+.follow-up-reason { overflow-wrap: anywhere; }
+.scholarship-instructions { white-space: pre-wrap; overflow-wrap: anywhere; }
+.roster-pages { align-items: center; justify-content: flex-end; margin-top: 14px; }
+.print-registration { background: white; padding: 16px; margin-top: 14px; }
+.print-heading { display: flex; align-items: center; gap: 12px; }
+.print-heading img { object-fit: contain; background: var(--action); }
+.paper-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 20px; }
+.print-choice { display: inline-block; margin-right: 12px; }
+.write-line { border-bottom: 1px solid var(--muted); height: 22px; }
+.print-registration section { margin-top: 18px; }
+.print-registration section h2 { font-size: 17px; }
+@media (max-width: 540px) { .paper-grid { grid-template-columns: 1fr; } }
+@media print {
+  body:has(.print-registration) { background: white; color: black; font-size: 10.5pt; }
+  body:has(.print-registration) header, main:has(.print-registration) > :not(.print-registration) { display: none; }
+  main:has(.print-registration), .print-registration { padding: 0; margin: 0; max-width: none; }
+  .paper-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .paper-grid > div { break-inside: avoid; }
+  .print-registration h2 { break-after: avoid; }
+  .print-heading img { display: none; }
+}
+
+.facilities-controls { align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.facility-calendar { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); min-width: 680px; gap: 1px; background: var(--line); }
+.facility-calendar > strong { padding: 6px 8px; background: var(--tint); }
+.facility-day { min-height: 82px; padding: 6px; background: var(--surface); overflow-wrap: anywhere; }
+.facility-day.outside { background: var(--page-background); color: var(--muted); }
+.facility-day time[aria-current="date"] { font-weight: 700; border-bottom: 2px solid var(--action); }
+.facility-booking { font-size: .82rem; margin-top: 5px; padding: 2px 5px; border-radius: 4px; }
+.facility-booking.camp { background: var(--tint); }
+.facility-booking.event { background: #faebcb; }
+
+
+/* Public registration follows the public site's teal and white palette. */
+.public-registration {
+  --action: var(--brand-teal);
+  --line: #d5e0e2;
+  --control-border: #758a90;
+  --tint: #e5f0f2;
+  min-height: 100vh;
+  background: var(--surface);
+}
+.public-registration-header { background: var(--surface); color: var(--brand-teal); border-bottom: 1px solid var(--line); }
+.public-registration-header > .public-registration-banner {
+  max-width: none;
+  padding: 7px max(20px, calc((100% - 1080px) / 2));
+  gap: 4px 16px;
+  background: var(--brand-teal);
+  color: white;
+  font-size: .875rem;
+}
+.public-registration-header .brand img { width: clamp(155px, 36vw, 245px); height: auto; }
+.public-registration-header button { background: var(--surface); color: var(--brand-teal); border-color: var(--control-border); }
+.public-registration > main { max-width: 760px; }
+.public-registration h1, .public-registration h2 { color: var(--brand-teal); }
+.signed-form-picker input[type="file"] { width: 100%; min-width: 0; }
+.signed-form-preview { display: block; max-width: min(100%, 260px); max-height: 200px; object-fit: contain; }
+.signed-form-picker a { overflow-wrap: anywhere; }
+.registration-eyebrow { color: var(--brand-teal); font-size: .8rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin: 0 0 6px; }
+
