@@ -26,6 +26,10 @@ Use **Check-in** to select a week and expected pickup stop, or search the whole 
 
 **Facilities calendar** shows dated camp weeks and special events. Camp Leadership can create or cancel events and reserve lodging rooms in **Special events**. Camp cabin blocks cover all listed dates. Special events use Panama-time arrival and checkout with an optional cleaning buffer. Select an event to open its bilingual public registration form or staff attendee roster. Camp Leadership can enter desk and signed-paper registrations, review day and overnight attendance, confirm or release places, and record payments. Overnight attendees can indicate a church or roommate group. Room assignment is a later step.
 
+## Azure staging
+
+Use the [Azure staging checklist](docs/azure-staging-checklist.md) for setup, rehearsal, and production handoff.
+
 ## Checks
 
 ```powershell

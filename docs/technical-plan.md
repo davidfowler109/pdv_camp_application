@@ -34,4 +34,6 @@ Use database transactions for operations that consume shared capacity. Serialize
 
 ## Before using real camper records
 
+Use the [Azure staging checklist](azure-staging-checklist.md) to verify the hosted pilot and carry the agreed sign-in and access model into production.
+
 Confirm real dorms and Cabin Leader teams, staff accounts and permissions, Spanish notices and permission forms, and the practical retention rules for attachments, incidents, and finance. Implement and verify those retention rules, configure production authentication, confirm the Azure cost and region, and test backup restoration. Keep receipt uploads conditional on the camp's deposit-verification workflow. Confirm who configures weekly housing, who may book hotel rooms, who may place guests in camper dorms, and who records destination handoffs.

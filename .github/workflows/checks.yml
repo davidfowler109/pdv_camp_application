@@ -1,0 +1,49 @@
+name: Camp application checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Build, test, and verify migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: camp_ci
+          POSTGRES_PASSWORD: fictional-ci-only
+          POSTGRES_DB: camp_ci
+        options: >-
+          --health-cmd "pg_isready -U camp_ci -d camp_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Apply migrations and fictional seed
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          for file in db/[0-9][0-9][0-9]-*.sql db/fictional-seed.sql; do
+            echo "Applying $file"
+            docker exec -i "$POSTGRES_CONTAINER" psql -X -v ON_ERROR_STOP=1 -U camp_ci -d camp_ci < "$file"
+          done
