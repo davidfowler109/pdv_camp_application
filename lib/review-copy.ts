@@ -1,0 +1,46 @@
+export const reviewCopy = {
+  en: {
+    title:"Review registration", back:"Back to applications", scholarships:"Scholarship batches", online:"Online", paper:"Paper",
+    pending:"Pending", granted:"Granted", declined:"Declined", confirmed:"Confirmed", released:"Released",
+    permission:"Participation permission", place:"Place", balance:"Outstanding balance", followup:"Reminder date (optional)", followupRequired:"Follow-up required", openFollowups:"Show open follow-ups", allApplications:"Show all applications", noFollowups:"No open follow-ups.", overdue:"Overdue", dueToday:"Due today", followupReason:"Reason (required)", saveFollowup:"Save follow-up",
+    followupQueue:"Follow-up queue", undatedFollowups:"Without a date",
+    authorization:"Consent details", followupHeading:"Follow-up", followupHelp:"Optional reminder for staff. This date does not change the camper’s place.", actor:"Staff name", witness:"Witness", source:"Paper intake source", received:"How the form arrived", recorder:"Entered by",
+    reviewPermission:"Record permission", evidence:"Who authorized, when, and how", finance:"Payments and scholarship", fee:"Week fee (USD)",
+    award:"Scholarship applied", paid:"Payments recorded", amount:"Amount (USD)", reference:"Payment reference", savePayment:"Record payment",
+    code:"Scholarship code", redeem:"Apply scholarship", codeOnForm:"Code supplied on the form",
+    eligible:"I checked eligibility for this week", exception:"Approved payment exception and reason, if needed",
+    confirm:"Confirm place", release:"Release place", releaseReason:"Reason and family contact outcome",
+    history:"Decision history", noHistory:"No decisions recorded yet", counts:"Confirmed places", noFee:"Fee not configured",
+    setup:"Configure weekly fee and awards", limit:"Weekly number of awards", saveSetup:"Save settings",
+    issue:"Allocate codes", distributor:"Distributor name", distributorRole:"Distributor role", pastor:"Pastor", staff:"Camp staff", missionary:"Missionary",
+    count:"Number of awards", value:"Value per award (USD)", allocated:"Awards allocated", remaining:"Awards available to issue", noAwards:"No awards are available to issue. Camp Leadership can update the scholarship limit in Week setup.", availableToRedeem:"Available to redeem", redeemedCodes:"Redeemed", issuedOn:"Issued",
+    saved:"Changes saved.", invalid:"Check the required fields and try again.", full:"This week has no places left.",
+    codeError:"This code is unavailable for this registration.", allocationExceeded:"This batch is larger than the number of awards remaining. No codes were created.",
+    feeNeeded:"Camp Leadership must set the week fee first.", exceptionNeeded:"Record the approved payment exception to confirm this place.",
+    alreadyArrived:"This camper has checked in. Their confirmed place can no longer be released here.", unavailable:"Unable to save. Try again.", permissionEvent:"Permission update", confirmedEvent:"Place confirmed", releasedEvent:"Place released",
+  },
+  es: {
+    title:"Revisar inscripción", back:"Volver a las solicitudes", scholarships:"Lotes de becas", online:"En línea", paper:"En papel",
+    pending:"Pendiente", granted:"Autorizado", declined:"No autorizado", confirmed:"Confirmado", released:"Liberado",
+    permission:"Permiso de participación", place:"Cupo", balance:"Saldo pendiente", followup:"Fecha del recordatorio (opcional)", followupRequired:"Requiere seguimiento", openFollowups:"Ver seguimientos abiertos", allApplications:"Ver todas las solicitudes", noFollowups:"No hay seguimientos abiertos.", overdue:"Vencido", dueToday:"Para hoy", followupReason:"Motivo (obligatorio)", saveFollowup:"Guardar seguimiento",
+    followupQueue:"Seguimientos pendientes", undatedFollowups:"Sin fecha",
+    authorization:"Detalles del consentimiento", followupHeading:"Seguimiento", followupHelp:"Recordatorio opcional para el personal. La fecha no cambia el cupo del campista.", actor:"Nombre del personal", witness:"Testigo", source:"Quién entregó el formulario", received:"Cómo llegó el formulario", recorder:"Registrado por",
+    reviewPermission:"Registrar permiso", evidence:"Quién autorizó, cuándo y por qué medio", finance:"Pagos y beca", fee:"Cuota semanal (USD)",
+    award:"Beca aplicada", paid:"Pagos registrados", amount:"Monto (USD)", reference:"Referencia de pago", savePayment:"Registrar pago",
+    code:"Código de beca", redeem:"Aplicar beca", codeOnForm:"Código indicado en el formulario",
+    eligible:"Verifiqué que el campista cumple los requisitos de esta semana", exception:"Excepción de pago aprobada y motivo, si aplica",
+    confirm:"Confirmar cupo", release:"Liberar cupo", releaseReason:"Motivo y resultado del contacto con la familia",
+    history:"Historial de decisiones", noHistory:"Todavía no hay decisiones registradas", counts:"Cupos confirmados", noFee:"Cuota sin configurar",
+    setup:"Configurar cuota semanal y becas", limit:"Número de becas de la semana", saveSetup:"Guardar configuración",
+    issue:"Asignar códigos", distributor:"Nombre de quien distribuye los códigos", distributorRole:"Función de quien distribuye los códigos", pastor:"Pastor", staff:"Personal del campamento", missionary:"Misionero/a",
+    count:"Cantidad de becas", value:"Monto por beca (USD)", allocated:"Becas asignadas", remaining:"Becas disponibles para asignar", noAwards:"No hay becas disponibles para asignar. La dirección puede actualizar el límite de becas en Preparar la semana.", availableToRedeem:"Disponibles para canjear", redeemedCodes:"Canjeados", issuedOn:"Asignado el",
+    saved:"Cambios guardados.", invalid:"Revisa los campos obligatorios y vuelve a intentarlo.", full:"Esta semana no tiene cupos disponibles.",
+    codeError:"Este código no está disponible para esta inscripción.", allocationExceeded:"El lote supera las becas disponibles. No se crearon códigos.",
+    feeNeeded:"La dirección del campamento debe configurar la cuota semanal.", exceptionNeeded:"Registra la excepción de pago aprobada para confirmar este cupo.",
+    alreadyArrived:"Este campista ya llegó. Su cupo confirmado ya no se puede liberar aquí.", unavailable:"No se pudo guardar. Intenta de nuevo.", permissionEvent:"Permiso actualizado", confirmedEvent:"Cupo confirmado", releasedEvent:"Cupo liberado",
+  },
+};
+
+export function formatMoney(cents: number, locale: "en" | "es") {
+  return new Intl.NumberFormat(locale === "es" ? "es-PA" : "en-US", { style:"currency", currency:"USD" }).format(cents / 100);
+}

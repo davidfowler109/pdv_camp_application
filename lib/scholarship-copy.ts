@@ -1,0 +1,28 @@
+export const scholarshipCopy = {
+  en:{
+    email:"Distributor email (optional)", instructions:"Instructions for the distributor (optional)",
+    emailCodes:"Email available codes", openDraft:"Open email draft", copyDraft:"Copy the message below into your email draft.",
+    subject:"Palabra de Vida scholarship codes",
+    weekCodes:"Week-specific codes", seasonCodes:"Any-week codes", seasonName:(year:number)=>`Any week in ${year}`,
+    seasonHelp:"These codes use a separate allocation and can be redeemed once in any camp week in this season.",
+    seasonLimit:"Season scholarship limit", saveLimit:"Save season limit",
+    noSeasonAwards:"There are no season awards available to issue. Camp Leadership can update the season limit here.",
+    seasonLimitError:"The season limit cannot be lower than the number of awards already issued.",
+    redeemedIn:"Redeemed for",
+    greeting:(name:string)=>`Hello ${name},`,
+    intro:(scope:string)=>`Here are your Palabra de Vida scholarship codes for ${scope}. Each code can be used once.`,
+  },
+  es:{
+    email:"Correo electrónico de quien distribuye los códigos (opcional)", instructions:"Instrucciones para quien distribuye los códigos (opcional)",
+    emailCodes:"Enviar por correo los códigos disponibles", openDraft:"Abrir borrador de correo", copyDraft:"Copia el mensaje de abajo en el borrador de correo.",
+    subject:"Códigos de beca de Palabra de Vida",
+    weekCodes:"Códigos para esta semana", seasonCodes:"Códigos para cualquier semana", seasonName:(year:number)=>`Cualquier semana de ${year}`,
+    seasonHelp:"Estos códigos tienen un cupo aparte y se pueden canjear una sola vez en cualquier semana de campamento de esta temporada.",
+    seasonLimit:"Límite de becas de la temporada", saveLimit:"Guardar límite de la temporada",
+    noSeasonAwards:"No hay becas de temporada disponibles para asignar. La dirección puede actualizar el límite aquí.",
+    seasonLimitError:"El límite de la temporada no puede ser menor que la cantidad de becas ya asignadas.",
+    redeemedIn:"Canjeado para",
+    greeting:(name:string)=>`Hola, ${name}:`,
+    intro:(scope:string)=>`Estos son tus códigos de beca de Palabra de Vida para ${scope}. Cada código se puede usar una sola vez.`,
+  },
+};

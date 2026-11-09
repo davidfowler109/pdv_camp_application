@@ -1,0 +1,28 @@
+export const checkInCopy = {
+  en:{
+    title:"Check-in", week:"Camp week", search:"Search camper names", all:"All arrival plans", filter:"Apply filters",
+    camper:"Camper", planned:"Expected arrival", actual:"Actual arrival", method:"Arrival method", bus:"Camp bus", own:"Own transportation",
+    busName:"Actual bus or route", present:"Present", expected:"Not yet arrived", mark:"Record arrival", actor:"Staff name",
+    dorm:"Dorm", unassigned:"Dorm unassigned", assign:"Assign dorm", change:"Change dorm", suggested:"Suggested",
+    available:"Beds available", reason:"Reason for a different dorm", noDorm:"No suitable ready dorm has a bed. The camper remains unassigned.",
+    noOtherDorm:"No other suitable ready dorm has a bed.", noPlace:"Confirm the camper’s place before assigning a dorm.", supervision:"Keep the camper supervised. Permission is required before activities.",
+    none:"No registrations match these filters.", saved:"Changes saved.", invalid:"Check the required fields and try again.",
+    correctArrival:"Correct arrival details", undoArrival:"Undo check-in", correctionReason:"Reason for correction", removePlacement:"Also remove this dorm assignment",
+    departureRecorded:"A departure is recorded. Correct it in Departure before undoing check-in.", placementNeedsConfirmation:"Confirm that the dorm assignment should also be removed.", stale:"The arrival record changed. Review it and try again.",
+    unavailable:"Unable to save. Try again.", noLonger:"That dorm is no longer available. Review the current options.",
+    reasonRequired:"Enter a reason when you change the suggested or current dorm.", review:"Review registration",
+  },
+  es:{
+    title:"Llegada", week:"Semana de campamento", search:"Buscar campistas por nombre", all:"Todas las llegadas previstas", filter:"Aplicar filtros",
+    camper:"Campista", planned:"Llegada prevista", actual:"Llegada real", method:"Medio de llegada", bus:"Bus del campamento", own:"Por cuenta propia",
+    busName:"Bus o ruta real", present:"Presente", expected:"Aún no llega", mark:"Registrar llegada", actor:"Nombre del personal",
+    dorm:"Dormitorio", unassigned:"Sin dormitorio asignado", assign:"Asignar dormitorio", change:"Cambiar dormitorio", suggested:"Sugerido",
+    available:"Camas disponibles", reason:"Motivo para elegir otro dormitorio", noDorm:"No hay un dormitorio apto y listo con cama disponible. El campista sigue sin dormitorio.",
+    noOtherDorm:"No hay otro dormitorio apto y listo con cama disponible.", noPlace:"Confirma el cupo antes de asignar un dormitorio.", supervision:"Mantén al campista bajo supervisión. Se requiere permiso antes de participar en actividades.",
+    none:"No hay inscripciones que coincidan con los filtros.", saved:"Cambios guardados.", invalid:"Revisa los campos obligatorios e inténtalo de nuevo.",
+    correctArrival:"Corregir datos de llegada", undoArrival:"Deshacer llegada", correctionReason:"Motivo de la corrección", removePlacement:"Quitar también la asignación de dormitorio",
+    departureRecorded:"Hay una salida registrada. Corrígela en Salida antes de deshacer la llegada.", placementNeedsConfirmation:"Confirma que también quieres quitar la asignación de dormitorio.", stale:"El registro de llegada cambió. Revísalo e inténtalo de nuevo.",
+    unavailable:"No se pudo guardar. Intenta de nuevo.", noLonger:"Ese dormitorio ya no está disponible. Revisa las opciones actuales.",
+    reasonRequired:"Indica el motivo al cambiar el dormitorio sugerido o actual.", review:"Revisar inscripción",
+  },
+};
