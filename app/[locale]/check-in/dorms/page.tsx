@@ -64,7 +64,7 @@ export default async function DormAssignments({ params, searchParams }: {
       {(groups.get(null)?.length ?? 0) > 0 && <section className="card"><h2>{t.unassigned}</h2>{camperList(groups.get(null)!,false)}</section>}
       <div className="dorms">{rooms.map(room => {
         const assigned = groups.get(room.id) ?? [];
-        const capacity = camperBedCapacity(room.usable,room.guests,room.guides.length,room.counselors.length);
+        const capacity = camperBedCapacity(room.usable,room.guests,room.guides.length);
         return <section className="card" key={room.id}>
           <h3>{room.building} · {room.name}</h3>
           <p>{labels.occupied}: {assigned.length} / {capacity}</p>

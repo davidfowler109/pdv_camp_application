@@ -6,7 +6,7 @@ import { getDatabase } from "../../lib/database";
 import { isLocale, type Locale } from "../../lib/copy";
 import { endOfCampBlock, lockFacilityRooms, roomConflict } from "../../lib/facilities";
 import { dateParts } from "../../lib/registration";
-import { camperBedCapacity, integer } from "../../lib/housing";
+import { camperBedCapacity, hasCabinTeam, integer } from "../../lib/housing";
 import { allocatedCount, confirmedCount, lockWeek, moneyCents } from "../../lib/review";
 import { currentRole, isRole, setSession, validDemoPassword } from "../../lib/session";
 
@@ -40,9 +40,14 @@ export async function changeLanguage(form: FormData) {
   const month = string(form,"month"), event = string(form,"event");
   if (section === "facilities" && /^20\d\d-(0[1-9]|1[0-2])$/.test(month)) query.set("month",month);
   if ((section === "events" || section === "events/attendees") && (event === "new" || /^[a-f0-9-]{36}$/i.test(event))) query.set("event",event);
+  const visit = string(form,"visit");
+  if (["church-visits","church-visits/visitors","church-visits/housing","church-visits/attendance","church-visits/itinerary"].includes(section) && (visit === "new" || /^[a-f0-9-]{36}$/i.test(visit))) query.set("visit",visit);
+  if (section === "church-visits/itinerary" && dateParts(string(form,"day"))) query.set("day",string(form,"day"));
+  const visitor = string(form,"visitor");
+  if (section === "church-visits/visitors" && /^[a-f0-9-]{36}$/i.test(visitor)) query.set("visitor",visitor);
   const from = string(form,"from");
   if (from) query.set("from",from.slice(0,500));
-  redirect("/" + locale + (/^(?:register|housing|staff|facilities|events(?:\/(?:attendees|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
+  redirect("/" + locale + (/^(?:register|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
 }
 
 export async function login(form: FormData) {
@@ -122,7 +127,8 @@ export async function saveDorm(form: FormData) {
 
   const db = await getDatabase();
   const saved = await db.transaction(async tx => {
-    if (!(await lockWeek(tx,week))) return false;
+    const campWeek = await lockWeek(tx,week);
+    if (!campWeek) return false;
     const { rows } = await tx.query<{ physical_beds:number; default_beds:number; active:boolean }>(
       "SELECT physical_beds,COALESCE(default_usable_beds,physical_beds) AS default_beds,active FROM dorm WHERE id=$1 AND room_kind='camper' FOR UPDATE", [dorm],
     );
@@ -155,8 +161,8 @@ export async function saveDorm(form: FormData) {
     );
     if (occupied[0].group_conflict) return "groupConflict" as const;
     // Existing placements must remain within capacity when their team changes.
-    if (occupied[0].count && (!form.has("active") || !guides || !counselors ||
-        occupied[0].count > camperBedCapacity(usable ?? rows[0].default_beds,guests,guides,counselors))) return false;
+    if (occupied[0].count && (!form.has("active") || !hasCabinTeam(guides,counselors,campWeek.minimum_age < 18) ||
+        occupied[0].count > camperBedCapacity(usable ?? rows[0].default_beds,guests,guides))) return false;
     await tx.query(
       `INSERT INTO weekly_dorm(week_id,dorm_id,minimum_age,maximum_age,usable_beds,guest_beds,gender_group,in_service)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8)

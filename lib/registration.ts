@@ -8,7 +8,7 @@ export function campPickupLabel(stop: typeof campBusStops[number], locale: "en"|
   return stop.name+" · "+stop.time+" "+(locale === "es" ? "a. m." : "AM")+" · "+stop[locale];
 }
 
-export const healthFields = ["food", "medicationAllergy", "medication", "accommodation"] as const;
+export const healthFields = ["food", "diet", "medicationAllergy", "medication", "accommodation"] as const;
 export type IntakeChannel = "online" | "paper" | "desk";
 export const noticeVersion = "pilot-2";
 

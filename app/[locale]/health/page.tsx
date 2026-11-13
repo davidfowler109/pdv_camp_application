@@ -9,7 +9,7 @@ import { currentRole } from "../../../lib/session";
 import { changeLanguage, logout } from "../actions";
 import { StaffNav } from "../staff-nav";
 
-const categories = ["food", "medicationAllergy", "medication"] as const;
+const categories = ["food", "diet", "medicationAllergy", "medication"] as const;
 type Category = typeof categories[number];
 type Row = { id:string; camper:string; dorm:string|null; place_status:"pending"|"confirmed"; answers:Record<Category, { answer:string|null; details:string|null }> };
 
@@ -23,18 +23,18 @@ export default async function Health({ params, searchParams }: {
   const kitchen = role === "kitchen";
   const query = await searchParams;
   const selected = categories.find(key => key === query.category);
-  const fields = kitchen ? ["food"] as const : selected ? [selected] : categories;
+  const fields = kitchen ? ["food","diet"] as const : selected ? [selected] : categories;
   const includePending = kitchen && query.places === "all";
   const unknown = !kitchen && query.view === "unknown";
   const t = registrationCopy[locale], r = reviewCopy[locale], c = copy[locale], housing = checkInCopy[locale];
   const h = locale === "es" ? {
-    title:kitchen ? "Alergias alimentarias" : "Salud de campistas", camper:"Campista", category:"Categoría", all:"Todas las categorías",
+    title:kitchen ? "Necesidades alimentarias" : "Salud de campistas", camper:"Campista", category:"Categoría", all:"Todas las categorías",
     view:"Vista", reported:"Necesidades reportadas", unknown:"Respuestas desconocidas", apply:"Aplicar filtros",
-    empty:"No hay campistas que coincidan con esta vista.", kitchenHelp:"Solo se muestran alergias alimentarias reportadas.", confirmedOnly:"Solo confirmados", includePending:"Confirmados y pendientes", emptyKitchen:"No hay alergias alimentarias reportadas para los campistas que coinciden con esta selección.",
+    empty:"No hay campistas que coincidan con esta vista.", kitchenHelp:"Se muestran alergias y necesidades alimentarias reportadas.", confirmedOnly:"Solo confirmados", includePending:"Confirmados y pendientes", emptyKitchen:"No hay alergias ni necesidades alimentarias reportadas para los campistas que coinciden con esta selección.",
   } : {
-    title:kitchen ? "Food allergies" : "Camper health", camper:"Camper", category:"Category", all:"All categories",
+    title:kitchen ? "Food requirements" : "Camper health", camper:"Camper", category:"Category", all:"All categories",
     view:"View", reported:"Reported needs", unknown:"Unknown answers", apply:"Apply filters",
-    empty:"No campers match this view.", kitchenHelp:"This view shows reported food allergies only.", confirmedOnly:"Confirmed only", includePending:"Confirmed and pending", emptyKitchen:"No food allergies have been reported for the campers in this selection.",
+    empty:"No campers match this view.", kitchenHelp:"This view shows reported food allergies and dietary requirements.", confirmedOnly:"Confirmed only", includePending:"Confirmed and pending", emptyKitchen:"No food allergies or dietary requirements have been reported for the campers in this selection.",
   };
   const db = await getDatabase();
   const weeks = await listCampWeeks(db);

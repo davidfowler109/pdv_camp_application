@@ -8,6 +8,7 @@ import { facilitiesCopy } from "../../../lib/facilities-copy";
 import { currentRole } from "../../../lib/session";
 import { ReviewFrame } from "../intake/review-frame";
 import { EventEditor } from "./event-editor";
+import { DateRangeFields } from "../date-range-fields";
 import { saveEvent } from "./actions";
 
 type Event = {
@@ -67,8 +68,8 @@ export default async function Events({ params, searchParams }: {
         <input name="id" type="hidden" value={selected?.id ?? randomUUID()} />
         <div className="grid">
           <label>{t.name}<input name="name" maxLength={120} required defaultValue={selected?.name} /></label>
-          <label>{t.start}<input name="start" type="datetime-local" required defaultValue={selected?.start} /></label>
-          <label>{t.end}<input name="end" type="datetime-local" required defaultValue={selected?.end} /></label>
+          <DateRangeFields startLabel={t.start} endLabel={t.end} type="datetime-local"
+            start={selected?.start} end={selected?.end} />
           <label>{t.turnover}<input name="turnover" type="number" min={0} max={10080} required defaultValue={selected?.turnover_minutes ?? 0} /></label>
           <label>{t.capacity}<input name="capacity" type="number" min={1} max={1000} required defaultValue={selected?.capacity} /></label>
           <label>{t.fee}<input name="fee" inputMode="decimal" placeholder="80.00" defaultValue={selected?.fee_cents == null ? "" : (selected.fee_cents/100).toFixed(2)} /></label>
