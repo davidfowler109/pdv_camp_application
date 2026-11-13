@@ -5,8 +5,8 @@
 
 ## 1. Set up a camp week
 
-- Maintain buildings and assignable dorms as editable inventory. Record physical bed capacity per dorm. Staff can take a dorm out of service and set fewer usable beds for a given week. Reserve one usable bed for each assigned Cabin Leader, each Camp Counselor, and each guest bed. The remainder is the dorm’s camper capacity, with a minimum of zero. Subtract existing camper placements when showing remaining beds during check-in.
-- Configure the eligible age and gender group for each camper dorm per week. Assign at least one adult Cabin Leader and one to three Camp Counselors for that week. Only dorms with usable beds and the required team are available for camper assignment.
+- Maintain buildings and assignable dorms as editable inventory. Record physical bed capacity per dorm. Staff can take a dorm out of service and set fewer usable beds for a given week. Reserve one usable bed for each assigned adult Cabin Leader and each guest bed. Camp Counselors sleep together separately. The remainder is the dorm’s camper capacity, with a minimum of zero. Subtract existing camper placements when showing remaining beds during check-in.
+- Configure the eligible age and gender group for each camper dorm per week. Require at least two adult Cabin Leaders per cabin. Assign one to three Camp Counselors for weeks serving campers under 18. Counselors are optional for 18+ weeks. Only dorms with usable beds and the required team are available for camper assignment.
 - Preserve historical occupancy and Cabin Leader teams when inventory or staffing changes for future weeks.
 
 ### Reusable inventory and turnover
@@ -38,7 +38,7 @@
 ## Acceptance scenarios
 
 - Staff add a building and dorm and configure its capacity for a future week. Past camper placements and Cabin Leader teams still show the historical setup.
-- A dorm with no adult Cabin Leader, no Camp Counselors, or no usable beds remaining is unavailable for camper placement. When two staff attempt to assign the last bed, only one assignment succeeds.
+- A dorm with fewer than two adult Cabin Leaders, no Camp Counselors in a week serving minors, or no usable beds remaining is unavailable for camper placement. When two staff attempt to assign the last bed, only one assignment succeeds.
 - A camper arrives on a different bus with permission pending. Staff find the camper across the week, record actual arrival, and see that supervised follow-up is needed before activities.
 - Staff can accept a suggestion or choose another available, compatible dorm and record why. The displayed Cabin Leaders and Camp Counselors match the chosen dorm.
 - A single guest with a whole-room reservation uses a two-bed hotel room. Staff cannot place another guest there, and camper dorm suggestions never include that room.

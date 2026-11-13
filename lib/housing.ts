@@ -1,13 +1,17 @@
 export type Availability = "ready" | "closed" | "noBeds" | "noTeam";
 
-export function availability(inService: boolean, camperBeds: number, guides: number, helpers: number): Availability {
+export function hasCabinTeam(adultLeaders: number, counselors: number, counselorsRequired: boolean) {
+  return adultLeaders >= 2 && counselors >= (counselorsRequired ? 1 : 0) && counselors <= 3;
+}
+
+export function availability(inService: boolean, camperBeds: number, guides: number, counselors: number, counselorsRequired: boolean): Availability {
   if (!inService) return "closed";
-  if (guides < 1 || helpers < 1 || helpers > 3) return "noTeam";
+  if (!hasCabinTeam(guides,counselors,counselorsRequired)) return "noTeam";
   return camperBeds > 0 ? "ready" : "noBeds";
 }
 
-export function camperBedCapacity(usableBeds: number, guestBeds: number, guides: number, equipantes: number) {
-  return Math.max(0, usableBeds - guestBeds - guides - equipantes);
+export function camperBedCapacity(usableBeds: number, guestBeds: number, adultLeaders: number) {
+  return Math.max(0, usableBeds - guestBeds - adultLeaders);
 }
 
 export function integer(value: FormDataEntryValue | null, min: number, max: number) {

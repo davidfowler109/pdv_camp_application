@@ -26,3 +26,50 @@ Families need a workable option without a personal device, email address, or rel
 ### Review triggers
 
 Review if the process regularly leaves families unable to register, staff encounter disputed authorizations the procedure cannot resolve, or applicable privacy requirements change.
+
+## PDV-002 — Church visit permissions and supervision
+
+Status — Agreed operating model for Church visits
+
+Policy owner — Camp Leadership
+
+Operational responsibility — Visiting church group leader, with camp staff coordinating facilities
+
+Specification — [Church visits](church-visits-spec.md#3-church-responsibility-for-permissions-and-supervision)
+
+### Decision
+
+- Visiting churches manage parental participation authorization for their students. Record the group leader's explicit acknowledgment that the church manages the necessary permissions and supervision, including identity, date and time, and the acknowledgment version.
+- The church supplies its accompanying adults and determines supervision arrangements. Record responsible adults and room assignments, with housing suggestions and authorized overrides constrained by reserved rooms and usable bed capacity.
+- Church leaders manage visitors' medication. Camp collects explicit food allergy, dietary requirement, and accommodation answers for meals and facilities, with details when a need is reported. Visitor rooming preferences are optional. Camp registration retains its medication questions and does not request rooming preferences.
+- Use Student, Adult, and Leader as visitor roles. Determine minority from date of birth independently of visitor role.
+- Authorization for camp to collect and use visitor information is a separate decision from church-managed participation permission. Confirm the registration notice, the appropriate route for minors' information, access, and retention before using real visitor records.
+
+Pilot implementation assumption — An authorized church representative may provide visitor information after explicitly declaring that the visitor, or the parent or legal guardian for a minor, authorized sharing it with camp. Store the representative's name and declaration. Public registration uses a fictional-data notice and follows the existing local-demo availability setting. Confirm this route and the visitor retention schedule before using real visitor records. A recorded leader acknowledgment is a declaration, with staff recording its source during assisted intake.
+
+### Rationale
+
+These visitors travel as a church ministry team. The church collects travelers' money, organizes the group, and provides its own supervision. The application needs a traceable church responsibility record and accurate facilities planning.
+
+### Review triggers
+
+Review when camp staff assume responsibility for supervising visiting students, a church cannot provide its supervision arrangement, the visit changes into the camp program, or the approved privacy requirements change.
+
+## PDV-003 — Sharing a church visit itinerary and estimated budget
+
+Status — Agreed sharing workflow, implemented for the pilot
+
+Policy owner — Camp Leadership
+
+Specification — [Church visits](church-visits-spec.md)
+
+### Decision
+
+- Camp Leadership explicitly publishes a dated version for the church leader and team. The publishing notice explains that anyone with the resulting link can view the itinerary, aggregate counts, group costs, and suggested traveler allowances.
+- Use an unpredictable link for each publication. Include aggregate planning data and team activity notes. Exclude individual visitor records, leader contact details, staff recorder identities, and private change notes.
+- Preserve published figures while staff edit the working plan. Record publication, link withdrawal, and link restoration in the planning history. A withdrawn link is available for staff review and is unavailable to public viewers.
+- Label incomplete prices and allowance assumptions. Suggested traveler contributions support the church's planning and collection process. The church remains the payer for camp charges.
+
+### Review triggers
+
+Review before adding personal visitor information, named rooming lists, sensitive ministry details, or authenticated leader editing to the shared estimate.

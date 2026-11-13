@@ -3,6 +3,7 @@ import Link from "next/link";
 import { StaffNav } from "./staff-nav";
 import { campWeekOptions } from "../../lib/camp-week";
 import { WeekSelector } from "./week-selector";
+import { DateRangeFields } from "./date-range-fields";
 import { reviewCopy, formatMoney } from "../../lib/review-copy";
 import { registrationCopy } from "../../lib/registration-copy";
 import { notFound, redirect } from "next/navigation";
@@ -56,8 +57,8 @@ function WeekForm({ locale, week }: { locale:Locale; week?:Week }) {
     {week && <input type="hidden" name="week" value={week.id} />}
     <div className="grid">
       <label>{t.label}<input name="name" defaultValue={week?.name} maxLength={80} required /></label>
-      <label>{h.start}<input name="start" type="date" defaultValue={week?.start ?? ""} required={!week} /></label>
-      <label>{h.end}<input name="end" type="date" defaultValue={week?.end ?? ""} required={!week} /></label>
+      <DateRangeFields key={week?.id ?? "new"} startLabel={h.start} endLabel={h.end}
+        start={week?.start ?? ""} end={week?.end ?? ""} required={!week} />
       <label>{t.min}<input name="min" type="number" min={7} max={18} defaultValue={week?.minimum_age} required /></label>
       <label><span>{t.max} <small>{h.openAge}</small></span><input name="max" type="number" min={7} max={18} defaultValue={week?.maximum_age ?? ""} /></label>
       <label>{t.capacity}<input name="capacity" type="number" min={1} max={250} defaultValue={week?.capacity ?? 250} required /></label>
@@ -156,11 +157,13 @@ export default async function Page({ params, searchParams }: {
         <div className="dorms">{dorms.map(dorm => {
           const guides = staff.filter(member => member.adult && dorm.staff_slots.includes("guide:"+member.id));
           const helpers = staff.filter(member => dorm.staff_slots.includes("equipante:"+member.id));
-          const beds = Math.max(0,camperBedCapacity(dorm.usable_beds, dorm.guest_beds, guides.length, helpers.length) - dorm.occupants);
-          const state = availability(dorm.active && dorm.in_service, beds, guides.length, helpers.length);
+          const beds = Math.max(0,camperBedCapacity(dorm.usable_beds, dorm.guest_beds, guides.length) - dorm.occupants);
+          const counselorsRequired = week.minimum_age < 18;
+          const state = availability(dorm.active && dorm.in_service, beds, guides.length, helpers.length, counselorsRequired);
+          const stateLabel = state === "noTeam" && !counselorsRequired ? t.noAdultTeam : t[state];
           return <section className="card" key={dorm.id}>
             <h3>{dorm.name}</h3><p className="muted">{dorm.building} · {dorm.gender_group ? t[dorm.gender_group] + " · " + (dorm.maximum_age === null ? dorm.minimum_age + "+" : dorm.minimum_age + "–" + dorm.maximum_age) : h.unset}</p>
-            <span className={state === "ready" && !dorm.needs_cleaning ? "badge" : "badge warn"}>{state !== "closed" && dorm.needs_cleaning ? h.cleaning : t[state]}</span>
+            <span className={state === "ready" && !dorm.needs_cleaning ? "badge" : "badge warn"}>{state !== "closed" && dorm.needs_cleaning ? h.cleaning : stateLabel}</span>
             <p>{t.open}: {beds}<br />{t.usable}: {dorm.usable_beds} · {t.guests}: {dorm.guest_beds}<br />{t.guides}: {guides.map(person => person.name).join(", ") || "—"}<br />{t.helpers}: {helpers.map(person => person.name).join(", ") || "—"}</p>
             {editable && <details><summary>{h.configure}</summary><DormForm key={JSON.stringify(dorm)} locale={locale} week={week!} staff={staff} dorm={dorm} /></details>}
           </section>;

@@ -106,6 +106,7 @@ label[hidden] { display: none; }
 .facility-booking { font-size: .82rem; margin-top: 5px; padding: 2px 5px; border-radius: 4px; }
 .facility-booking.camp { background: var(--tint); }
 .facility-booking.event { background: #faebcb; }
+.facility-booking.visit { background: #e5e0f2; }
 
 
 /* Public registration follows the public site's teal and white palette. */
@@ -134,4 +135,11 @@ label[hidden] { display: none; }
 .signed-form-preview { display: block; max-width: min(100%, 260px); max-height: 200px; object-fit: contain; }
 .signed-form-picker a { overflow-wrap: anywhere; }
 .registration-eyebrow { color: var(--brand-teal); font-size: .8rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin: 0 0 6px; }
+.visit-attendance-scroll { max-height: 34rem; overflow: auto; }
+.visit-attendance-scroll thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+@media print {
+  .no-print { display: none !important; }
+  .estimate-summary .card { break-inside: avoid; }
+  .estimate-summary .roster-scroll { overflow: visible; }
+}
 

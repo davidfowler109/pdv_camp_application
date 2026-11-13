@@ -12,5 +12,5 @@ SELECT w.id, d.id, 11, 12, d.physical_beds, 0, 'female', true FROM camp_week w C
 INSERT INTO weekly_dorm_staff (week_id, dorm_id, staff_id)
 SELECT wd.week_id, wd.dorm_id, s.id
 FROM weekly_dorm wd JOIN dorm d ON d.id = wd.dorm_id CROSS JOIN staff_member s
-WHERE (d.name = 'Cedro' AND s.name IN ('Lucía', 'Ana', 'Sofía'))
+WHERE (d.name = 'Cedro' AND s.name IN ('Lucía', 'Elena', 'Ana', 'Sofía'))
    OR (d.name = 'Pino' AND s.name = 'María');

@@ -2,21 +2,22 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { availability, camperBedCapacity, integer } from "../lib/housing.ts";
 
-test("availability requires service, open beds and complete staffing", () => {
-  assert.equal(availability(false, 5, 1, 1), "closed");
-  assert.equal(availability(true, 5, 0, 1), "noTeam");
-  assert.equal(availability(true, 5, 1, 0), "noTeam");
-  assert.equal(availability(true, 5, 1, 4), "noTeam");
-  assert.equal(availability(true, 0, 1, 1), "noBeds");
-  assert.equal(availability(true, 5, 2, 3), "ready");
+test("placement requires two adult leaders and counselors for weeks serving minors", () => {
+  assert.equal(availability(false, 5, 2, 1, true), "closed");
+  assert.equal(availability(true, 5, 1, 3, true), "noTeam");
+  assert.equal(availability(true, 5, 1, 0, false), "noTeam");
+  assert.equal(availability(true, 5, 2, 0, true), "noTeam");
+  assert.equal(availability(true, 5, 2, 4, true), "noTeam");
+  assert.equal(availability(true, 0, 2, 1, true), "noBeds");
+  assert.equal(availability(true, 5, 2, 3, true), "ready");
+  assert.equal(availability(true, 5, 2, 0, false), "ready");
 });
 
-test("camper beds exclude guests and each assigned team member", () => {
-  assert.equal(camperBedCapacity(12, 0, 2, 0), 10);
-  assert.equal(camperBedCapacity(12, 0, 2, 3), 7);
-  assert.equal(camperBedCapacity(10, 1, 2, 3), 4);
-  assert.equal(camperBedCapacity(2, 1, 2, 1), 0);
-  assert.equal(availability(true, camperBedCapacity(3, 0, 2, 1), 2, 1), "noBeds");
+test("only adult cabin leaders and guests use cabin beds", () => {
+  assert.equal(camperBedCapacity(16, 0, 2), 14);
+  assert.equal(camperBedCapacity(10, 0, 2), 8);
+  assert.equal(camperBedCapacity(10, 1, 2), 7);
+  assert.equal(camperBedCapacity(2, 1, 2), 0);
 });
 
 test("integer fields reject blank, fractional and out of range values", () => {

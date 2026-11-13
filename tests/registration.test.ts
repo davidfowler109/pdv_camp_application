@@ -9,11 +9,21 @@ function registration() {
     id:"952e8ec3-95ab-40ea-8ad2-d324c3eeab5e", week:"1", authorization:"yes", signerRole:"guardian",
     signer:"Laura", signerRelationship:"Mother", first:"Isabel", last:"Mora", birth:"2014-06-04", group:"female",
     home:"Last house past the church", contact:"Laura", relationship:"Mother", contactRoute:"Through the pastor",
-    helperRole:"pastor", helper:"Mateo", food:"none", medicationAllergy:"unknown", medication:"none", accommodation:"none",
+    helperRole:"pastor", helper:"Mateo", food:"none", diet:"none", medicationAllergy:"unknown", medication:"none", accommodation:"none",
     arrival:"bus", arrivalStop:"Albrook", departure:"own", participation:"pending", photoPermission:"declined",
   })) form.set(key, value);
   return form;
 }
+
+test("dietary requirements need an explicit answer and details when reported", () => {
+  const form = registration();
+  form.delete("diet");
+  assert.equal(parseRegistration(form,"online",today),null);
+  form.set("diet","yes");
+  assert.equal(parseRegistration(form,"online",today),null);
+  form.set("dietDetails","Fictional lactose intolerance");
+  assert.equal(parseRegistration(form,"online",today)?.details.dietDetails,"Fictional lactose intolerance");
+});
 
 test("data consent is explicit while participation may remain pending", () => {
   const form = registration();

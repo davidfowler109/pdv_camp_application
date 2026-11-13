@@ -10,8 +10,8 @@ export function moneyCents(input: string) {
 }
 
 export async function lockWeek(tx: Database, week: number) {
-  const result = await tx.query<{ capacity: number; fee_cents: number | null; award_limit: number; season_year:number|null }>(
-    "SELECT capacity,fee_cents,award_limit,EXTRACT(YEAR FROM starts_on)::integer AS season_year FROM camp_week WHERE id=$1 FOR UPDATE", [week],
+  const result = await tx.query<{ capacity: number; fee_cents: number | null; award_limit: number; minimum_age:number; season_year:number|null }>(
+    "SELECT capacity,fee_cents,award_limit,minimum_age,EXTRACT(YEAR FROM starts_on)::integer AS season_year FROM camp_week WHERE id=$1 FOR UPDATE", [week],
   );
   return result.rows[0];
 }

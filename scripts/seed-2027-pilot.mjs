@@ -40,6 +40,7 @@ try {
   await db.transaction(async tx => {
     const insert = async (sql,values) => (await tx.query(sql,values)).rows[0].id;
     const rooms = [];
+    const adultLeadersPerCabin = 2;
     for (const [building,group,first,last,beds] of buildings) {
       const buildingId = await insert("INSERT INTO building(name) VALUES($1) RETURNING id",[building]);
       for (let number=first; number<=last; number++) {
@@ -47,7 +48,7 @@ try {
         const team = [];
         for (let member=0; member<3; member++) {
           const name = names(group,(id-1)*3+member,4).join(" ");
-          team.push(await insert("INSERT INTO staff_member(name,team_role,adult) VALUES($1,$2,true) RETURNING id",[name,member<2 ? "guide" : "equipante"]));
+          team.push(await insert("INSERT INTO staff_member(name,team_role,adult) VALUES($1,$2,true) RETURNING id",[name,member<adultLeadersPerCabin ? "guide" : "equipante"]));
         }
         rooms.push({id,group,beds,team});
       }
@@ -69,8 +70,8 @@ try {
         const override = weekIndex===0 && room.id===2 ? room.beds-2 : null;
         const open = !(weekIndex===0 && room.id===20);
         await tx.query("INSERT INTO weekly_dorm(week_id,dorm_id,minimum_age,maximum_age,usable_beds,guest_beds,gender_group,in_service) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",[id,room.id,min,max,override,guest,room.group,open]);
-        await tx.query("INSERT INTO weekly_dorm_staff(week_id,dorm_id,staff_id) SELECT $1,$2,unnest($3::integer[])",[id,room.id,room.team]);
-        reservations.set(room.id,open ? (override ?? room.beds)-room.team.length-guest : 0);
+        await tx.query("INSERT INTO weekly_dorm_staff(week_id,dorm_id,staff_id) SELECT $1,$2,unnest($3::integer[])",[id,room.id,min < 18 ? room.team : room.team.slice(0,adultLeadersPerCabin)]);
+        reservations.set(room.id,open ? (override ?? room.beds)-adultLeadersPerCabin-guest : 0);
       }
       const codes = [];
       for (let batch=0;batch<2;batch++) {

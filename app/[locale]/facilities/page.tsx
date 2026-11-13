@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { getDatabase } from "../../../lib/database";
 import { facilitiesCopy } from "../../../lib/facilities-copy";
+import { churchVisitsCopy } from "../../../lib/church-visits-copy";
 import { panamaDate } from "../../../lib/registration";
 import { requireReview, ReviewFrame } from "../intake/review-frame";
 
 type Booking = {
-  id:string; kind:"camp"|"event"; name:string; start:string; end:string; blocked_until:string; rooms:string[];
+  id:string; kind:"camp"|"event"|"visit"; name:string; start:string; end:string; blocked_until:string; rooms:string[];
 };
 const days = 86400000;
 const isoDay = (ms:number) => new Date(ms).toISOString().slice(0,10);
@@ -41,6 +42,12 @@ export default async function Facilities({ params, searchParams }: {
          ARRAY(SELECT b.name || ' · ' || d.name FROM event_room_reservation er JOIN dorm d ON d.id=er.dorm_id
            JOIN building b ON b.id=d.building_id WHERE er.event_id=e.id ORDER BY b.name,d.id)
        FROM special_event e WHERE e.cancelled_at IS NULL
+       UNION ALL
+       SELECT v.id::text,'visit',v.name,to_char(v.starts_at,'YYYY-MM-DD"T"HH24:MI'),to_char(v.ends_at,'YYYY-MM-DD"T"HH24:MI'),
+         to_char(v.ends_at+v.turnover_minutes*interval '1 minute','YYYY-MM-DD"T"HH24:MI'),
+         ARRAY(SELECT b.name || ' · ' || d.name FROM visit_room_reservation vr JOIN dorm d ON d.id=vr.dorm_id
+           JOIN building b ON b.id=d.building_id WHERE vr.visit_id=v.id ORDER BY b.name,d.id)
+       FROM church_visit v WHERE v.cancelled_at IS NULL
      ) bookings ORDER BY start,name,id`,
   );
   function intersects(booking:Booking,start:string,end:string) {
@@ -49,7 +56,8 @@ export default async function Facilities({ params, searchParams }: {
   const listed = rows.filter(item => intersects(item,isoDay(first),isoDay(next)));
   const upcoming = rows.find(item => item.start.slice(0,10)>today)?.start.slice(0,7);
   function bookingLabel(item:Booking) {
-    const link = item.kind === "camp" ? "/"+locale+"?week="+item.id : role === "leadership" ? "/"+locale+"/events?event="+item.id : null;
+    const link = item.kind === "camp" ? "/"+locale+"?week="+item.id : role === "leadership"
+      ? "/"+locale+(item.kind === "visit" ? "/church-visits?visit=" : "/events?event=")+item.id : null;
     return link ? <Link href={link}>{item.name}</Link> : item.name;
   }
   return <ReviewFrame locale={locale} section="facilities" title={t.calendar} month={month}>
@@ -76,8 +84,8 @@ export default async function Facilities({ params, searchParams }: {
     </section>
     <section className="card"><h2>{t.summary}</h2>
       {listed.length ? <ul>{listed.map(item => <li key={item.kind+item.id}>
-        <strong>{bookingLabel(item)}</strong> · {item.kind === "camp" ? t.camp : t.event} · {localTime(item.start)} – {localTime(item.end)}
-        {item.kind === "event" && item.end !== item.blocked_until && <> · {t.cleanUntil}: {localTime(item.blocked_until)}</>}
+        <strong>{bookingLabel(item)}</strong> · {item.kind === "camp" ? t.camp : item.kind === "visit" ? churchVisitsCopy[locale].title : t.event} · {localTime(item.start)} – {localTime(item.end)}
+        {item.kind !== "camp" && item.end !== item.blocked_until && <> · {t.cleanUntil}: {localTime(item.blocked_until)}</>}
         {item.rooms.length ? <details><summary>{t.roomCount}: {item.rooms.length}</summary><ul>{item.rooms.map((room,index) => <li key={room+"-"+index}>{room}</li>)}</ul></details> : <div>{t.noRooms}</div>}
       </li>)}</ul> : <p>{t.none}</p>}
     </section>
