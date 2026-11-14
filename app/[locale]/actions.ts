@@ -39,7 +39,7 @@ export async function changeLanguage(form: FormData) {
   if (section === "intake/new" && string(form,"method") === "paper") query.set("method","paper");
   const month = string(form,"month"), event = string(form,"event");
   if (section === "facilities" && /^20\d\d-(0[1-9]|1[0-2])$/.test(month)) query.set("month",month);
-  if ((section === "events" || section === "events/attendees") && (event === "new" || /^[a-f0-9-]{36}$/i.test(event))) query.set("event",event);
+  if ((section === "events" || section === "events/attendees" || section === "events/housing") && (event === "new" || /^[a-f0-9-]{36}$/i.test(event))) query.set("event",event);
   const visit = string(form,"visit");
   if (["church-visits","church-visits/visitors","church-visits/housing","church-visits/attendance","church-visits/itinerary"].includes(section) && (visit === "new" || /^[a-f0-9-]{36}$/i.test(visit))) query.set("visit",visit);
   if (section === "church-visits/itinerary" && dateParts(string(form,"day"))) query.set("day",string(form,"day"));
@@ -47,7 +47,7 @@ export async function changeLanguage(form: FormData) {
   if (section === "church-visits/visitors" && /^[a-f0-9-]{36}$/i.test(visitor)) query.set("visitor",visitor);
   const from = string(form,"from");
   if (from) query.set("from",from.slice(0,500));
-  redirect("/" + locale + (/^(?:register|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
+  redirect("/" + locale + (/^(?:register|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
 }
 
 export async function login(form: FormData) {

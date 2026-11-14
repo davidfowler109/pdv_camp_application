@@ -136,6 +136,16 @@ test("daily itinerary estimates preserve costs, meal quantities and published ve
       assert.equal(await db.transaction(tx => changeVisitorStatus(tx,next)),"saved");
       assert.equal(calculateVisitBudget(await plan()).count,1);
     });
+    await t.test("meals supply their description while other expenses require one and meal sources remain mandatory", async () => {
+      for (const meal of ["breakfast","lunch","dinner"]) {
+        const id=randomUUID();
+        assert.equal((await save(await cost(id,{description:"",meal,mealSource:"camp"}))).status,"saved");
+        assert.equal((await plan()).costs.find(row => row.id===id)?.description,meal[0].toUpperCase()+meal.slice(1));
+      }
+      assert.equal((await save(await cost(randomUUID(),{description:""}))).status,"invalid");
+      assert.equal((await save(await cost(randomUUID(),{description:"",meal:"breakfast",mealSource:""}))).status,"invalid");
+      assert.equal((await save(await cost(randomUUID(),{description:"Bus rental",meal:""}))).status,"saved");
+    });
     await t.test("activities outside changed visit dates block a new publication and cancelled visits close edits", async () => {
       await db.query("UPDATE church_visit SET ends_at='2027-06-02T12:00' WHERE id=$1",[visit]);
       assert.equal((await save(await command("publish"))).status,"outsideDates");

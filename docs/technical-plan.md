@@ -36,6 +36,8 @@ Use database transactions for operations that consume shared capacity. Serialize
 
 The [Church visits specification](church-visits-spec.md) records the agreed group registration, church responsibility acknowledgment, housing, daily itinerary, meals, transportation, and estimated costs. Follow its proposed build order for implementation. [PDV-002](sensitive-decisions.md#pdv-002--church-visit-permissions-and-supervision) records the permissions and supervision decision.
 
+Special events housing now uses a parallel reviewed workflow over the same reserved room inventory. Migration 025 adds event room arrangements, attendee placements, revision and publication state, and change history. Leadership generates group-aware suggestions, overrides and locks assignments, reviews accessibility and split-group requests, and publishes the staff room list. Event and attendee changes invalidate publication. Adult supervision is optional per event and consumes an attendee's existing bed rather than an extra reserved bed. See the [Special events specification](special-events-spec.md) for lifecycle and deployment details.
+
 ## Before using real camper records
 
 Use the [Azure staging checklist](azure-staging-checklist.md) to verify the hosted pilot and carry the agreed sign-in and access model into production.

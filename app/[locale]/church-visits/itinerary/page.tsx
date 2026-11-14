@@ -12,6 +12,7 @@ import { ReviewFrame } from "../../intake/review-frame";
 import { RegistrationLink } from "../registration-link";
 import { PlanForm,MealFields } from "./plan-form";
 import { BudgetSummary,CostTable } from "./budget-summary";
+import { DaySelector } from "./day-selector";
 
 export default async function VisitItinerary({params,searchParams}: {
   params:Promise<{locale:string}>;searchParams:Promise<{visit?:string;day?:string;status?:string}>;
@@ -54,7 +55,8 @@ export default async function VisitItinerary({params,searchParams}: {
   const costEditor=(activity:string|null,cost?:VisitCost) => <PlanForm locale={locale} label={t.saveCost}>
     {fields("costSave",cost?.id ?? randomUUID())}<input name="activity" type="hidden" value={activity ?? ""} />
     <div className="grid">
-      <label><span>{t.description} *</span><input name="description" maxLength={200} required defaultValue={cost?.description} /></label>
+      {activity ? <MealFields locale={locale} meal={cost?.meal} source={cost?.meal_source} description={cost?.description} /> :
+        <label><span>{t.description} *</span><input name="description" maxLength={200} required defaultValue={cost?.description} /></label>}
       <label><span>{t.payer} *</span><select name="payer" required defaultValue={cost?.payer ?? ""}><option value="">—</option>
         <option value="camp">{t.camp}</option><option value="church">{t.church}</option><option value="personal">{t.personal}</option>
       </select></label>
@@ -64,12 +66,11 @@ export default async function VisitItinerary({params,searchParams}: {
       </select></label>
       <label><span>{t.quantity}</span><input name="quantity" type="number" min={0} max={1000} defaultValue={cost?.quantity_override ?? ""} /></label>
       <label><span>{t.unit}</span><input name="price" inputMode="decimal" defaultValue={cost?.unit_cents==null ? "" : (cost.unit_cents/100).toFixed(2)} /></label>
-      {activity && <MealFields locale={locale} meal={cost?.meal} source={cost?.meal_source} />}
     </div><p className="muted">{t.quantityHelp}</p><p className="muted">{t.priceHelp}</p>
   </PlanForm>;
   const costControls=(activity:string|null) => !plan.visit.cancelled_at && <>
     <details><summary>{t.addCost}</summary>{costEditor(activity)}</details>
-    {plan.costs.filter(cost => cost.activity_id===activity && !cost.archived_at).map(cost => <details key={cost.id}><summary>{t.edit} · {cost.description}</summary>
+    {plan.costs.filter(cost => cost.activity_id===activity && !cost.archived_at).map(cost => <details key={cost.id}><summary>{t.edit} · {cost.meal ? t[cost.meal] : cost.description}</summary>
       {costEditor(activity,cost)}<details><summary>{t.archiveCost}</summary><PlanForm locale={locale} label={t.archiveCost} reason>{fields("costArchive",cost.id)}</PlanForm></details>
     </details>)}
   </>;
@@ -91,10 +92,8 @@ export default async function VisitItinerary({params,searchParams}: {
         <label><span>{t.extra} *</span><input name="extra" inputMode="decimal" required defaultValue={(plan.settings.personal_extra_cents/100).toFixed(2)} /></label>
       </div><label className="check"><input name="shareGroup" type="checkbox" defaultChecked={plan.settings.share_group_costs} />{t.shareGroup}</label></PlanForm>
     </details></section>}
-    <section className="card"><h2>{t.day} · {day}</h2><form method="get"><input name="visit" type="hidden" value={id} />
-      <label><span>{t.day}</span><input name="day" type="date" min={plan.visit.start} max={plan.visit.end} required defaultValue={day} list="visit-days" /></label>
-      <datalist id="visit-days">{days.map(value => <option key={value} value={value} />)}</datalist><button>{t.viewDay}</button>
-    </form>
+    <section className="card"><h2>{t.day} · {day}</h2>
+      <DaySelector visit={id} day={day} start={plan.visit.start} end={plan.visit.end} days={days} label={t.day} submitLabel={t.viewDay} />
       {!plan.visit.cancelled_at && <><details><summary>{t.addActivity}</summary>{activityEditor()}</details>
         <details><summary>{t.copyDay}</summary><PlanForm locale={locale} label={t.copyDay}>{fields("copyDay")}<input name="sourceDay" type="hidden" value={day} />{targetDay}</PlanForm></details></>}
     </section>
@@ -112,7 +111,7 @@ export default async function VisitItinerary({params,searchParams}: {
       {plan.activities.filter(activity => activity.archived_at).map(activity => <details key={activity.id}><summary>{activity.day} · {activity.title}</summary>
         <PlanForm locale={locale} label={t.restoreActivity} reason>{fields("activityRestore",activity.id)}</PlanForm>
       </details>)}
-      {plan.costs.filter(cost => cost.archived_at).map(cost => <details key={cost.id}><summary>{cost.description}</summary><PlanForm locale={locale} label={t.restoreCost} reason>{fields("costRestore",cost.id)}</PlanForm></details>)}
+      {plan.costs.filter(cost => cost.archived_at).map(cost => <details key={cost.id}><summary>{cost.meal ? t[cost.meal] : cost.description}</summary><PlanForm locale={locale} label={t.restoreCost} reason>{fields("costRestore",cost.id)}</PlanForm></details>)}
     </details></section>}
     <section className="card"><h2>{t.published}</h2>
       {!plan.visit.cancelled_at && <details><summary>{t.publish}</summary><p>{t.publishHelp}</p><PlanForm locale={locale} label={t.publish}>{fields("publish")}</PlanForm></details>}

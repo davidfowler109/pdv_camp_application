@@ -9,7 +9,7 @@ export function CostTable({locale,lines}: {locale:Locale;lines:Budget["lines"]})
   return <div className="roster-scroll"><table className="roster-table"><thead><tr>
     <th scope="col">{t.description}</th><th scope="col">{t.payer}</th><th scope="col">{t.basis}</th><th scope="col">{t.quantityUsed}</th><th scope="col">{t.price}</th><th scope="col">{t.lineTotal}</th>
   </tr></thead><tbody>{lines.map(line => <tr key={line.id}>
-    <th scope="row">{line.description}{line.meal && <div className="muted">{t[line.meal]} · {line.meal_source==="camp" ? t.mealCamp : line.meal_source==="packed" ? t.packed : t.outside}</div>}</th>
+    <th scope="row">{line.meal && line.description===line.meal[0].toUpperCase()+line.meal.slice(1) ? t[line.meal] : line.description}{line.meal && <div className="muted">{t[line.meal]} · {line.meal_source==="camp" ? t.mealCamp : line.meal_source==="packed" ? t.packed : t.outside}</div>}</th>
     <td>{t[line.payer]}</td><td>{t[line.basis]}</td><td>{line.quantity}</td>
     <td>{line.unit_cents===null ? t.unknown : line.unit_cents===0 ? t.free : money(line.unit_cents)}</td><td>{line.total===null ? t.unknown : money(line.total)}</td>
   </tr>)}</tbody></table></div>;

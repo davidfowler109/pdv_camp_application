@@ -115,10 +115,12 @@ export async function saveVisitPlan(tx:Database,form:FormData):Promise<Itinerary
       ON CONFLICT(id) DO UPDATE SET day=excluded.day,title=excluded.title,time_of_day=excluded.time_of_day,location=excluded.location,notes=excluded.notes`,[id,visit,day,title,time||null,location,notes]);
     returnDay=day;
   } else if (operation === "costSave") {
-    const activity=read("activity"),description=read("description"),payer=read("payer"),basis=read("basis"),applies=read("applies");
+    const activity=read("activity"),payer=read("payer"),basis=read("basis"),applies=read("applies");
     const rawQuantity=read("quantity"),quantity=rawQuantity ? integer(rawQuantity,0,1000) : null;
     const rawPrice=read("price"),price=rawPrice ? moneyCents(rawPrice) : null;
     const meal=read("meal"),source=meal ? read("mealSource") : "";
+    const mealNames:Record<string,string>={breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner"};
+    const description=meal ? mealNames[meal] ?? "" : read("description");
     if (!visitIdPattern.test(id) || !description || description.length>200 || !["camp","church","personal"].includes(payer) || !["person","group"].includes(basis) ||
       !["all","student","adult","leader"].includes(applies) || (rawQuantity && quantity===null) || (rawPrice && price===null) ||
       (activity && !before.activities.some(item => item.id===activity && !item.archived_at)) ||

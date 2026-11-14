@@ -6,6 +6,7 @@ import { currentRole } from "../../../lib/session";
 import { panamaDate } from "../../../lib/registration";
 import { moneyCents } from "../../../lib/review";
 import { eventNoticeVersion,eventUuid,parseEventAttendee,readEventField,type EventSource } from "../../../lib/event-registration";
+import { releaseEventHousing } from "../../../lib/event-housing";
 
 export type AttendeeResult = "received"|"invalid"|"closed"|"unavailable"|null;
 
@@ -24,12 +25,13 @@ export async function registerAttendee(source:EventSource,_:AttendeeResult,form:
       if (!event || event.cancelled_at || (attendee.attendance === "day" ? !event.day_attendance : !event.overnight_attendance)) return "closed";
       const result = await tx.query(
         `INSERT INTO event_attendee(id,event_id,first_name,last_name,contact,attendance,rooming,church,rooming_code,food,accessibility,
-          source,authorization_date,notice_version,authorization_source,recorder)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          source,authorization_date,notice_version,authorization_source,recorder,food_answer,diet_answer,diet)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
          ON CONFLICT(id) DO UPDATE SET id=excluded.id
          WHERE event_attendee.event_id=excluded.event_id AND event_attendee.source=excluded.source RETURNING id`,
         [attendee.id,attendee.event,attendee.first,attendee.last,attendee.contact,attendee.attendance,attendee.rooming,attendee.church,
-          attendee.code,attendee.food,attendee.accessibility,source,attendee.date,eventNoticeVersion,attendee.authorizationSource,attendee.recorder],
+          attendee.code,attendee.food,attendee.accessibility,source,attendee.date,eventNoticeVersion,attendee.authorizationSource,attendee.recorder,
+          attendee.foodAnswer,attendee.dietAnswer,attendee.diet],
       );
       return result.rows.length ? "received" : "invalid";
     });
@@ -62,6 +64,9 @@ export async function reviewAttendee(form:FormData) {
         await tx.query("UPDATE event_attendee SET place_status='confirmed' WHERE id=$1",[id]);
       } else if (operation==="release") {
         if (attendee.place_status==="released") return "saved";
+        const actor=read("actor"),reason=read("reason");
+        if(!actor||actor.length>160||!reason||reason.length>1000)return "invalid";
+        await releaseEventHousing(tx,eventId,id,actor,reason);
         await tx.query("UPDATE event_attendee SET place_status='released' WHERE id=$1",[id]);
       } else if (operation==="payment") {
         const amount=moneyCents(read("amount")), reference=read("reference"), actor=read("actor");
