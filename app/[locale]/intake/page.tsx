@@ -8,6 +8,7 @@ import { registrationCopy } from "../../../lib/registration-copy";
 import { reviewCopy, formatMoney } from "../../../lib/review-copy";
 import { rosterCopy } from "../../../lib/roster-copy";
 import { requireReview, ReviewFrame } from "./review-frame";
+import { RegistrationWeekFilter } from "./week-filter";
 
 type Row = {
   id:string; camper:string; balance:number|null; followup_date:string|null; follow_up_reason:string|null;
@@ -96,7 +97,7 @@ export default async function Intake({ params, searchParams }: {
       <form method="get" className="roster-filters">
         {followups && <input type="hidden" name="followups" value={followups} />}
         <div className="grid">
-          <label>{f.week}<select name="week" defaultValue={week.id}>{weeks.map(item => <option key={item.id} value={item.id}>{campWeekLabel(item,locale)}</option>)}</select></label>
+          <RegistrationWeekFilter label={f.week} selected={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} />
           <label>{campPaymentCopy[locale].search}<input type="search" name="q" defaultValue={search} maxLength={100} /></label>
         </div>
         <details open={Boolean(gender || church)}>

@@ -14,6 +14,8 @@ export function AttendeeForm({locale,event,id,source,day,overnight}:{
   const [authorized,setAuthorized]=useState(false);
   const [attendance,setAttendance]=useState("");
   const [rooming,setRooming]=useState("");
+  const [foodAnswer,setFoodAnswer]=useState("");
+  const [dietAnswer,setDietAnswer]=useState("");
   const required=<span className="required-mark" aria-hidden="true"> *</span>;
   const field=(name:string,label:string,max:number,mandatory=true)=>
     <label><span>{label}{mandatory && required}</span><input name={name} maxLength={max} required={mandatory} /></label>;
@@ -44,7 +46,11 @@ export function AttendeeForm({locale,event,id,source,day,overnight}:{
         {attendance==="overnight" && rooming==="church" && field("church",t.church,150)}
         {attendance==="overnight" && rooming==="group" && <label><span>{t.code}{required}</span>
           <input name="code" maxLength={30} pattern={"[A-Za-z0-9\\-]{3,30}"} title={t.codeHelp} required /></label>}
-        {field("food",t.food,500,false)}{field("accessibility",t.accessibility,500,false)}
+        <div>{choice(t.food,[["none",t.none],["yes",t.yes],["unknown",t.unknown]],foodAnswer,setFoodAnswer,"foodAnswer")}
+          {foodAnswer==="yes" && field("food",t.foodDetails,500)}</div>
+        <div>{choice(t.diet,[["none",t.none],["yes",t.yes],["unknown",t.unknown]],dietAnswer,setDietAnswer,"dietAnswer")}
+          {dietAnswer==="yes" && field("diet",t.dietDetails,500)}</div>
+        {field("accessibility",t.accessibility,500,false)}
         {source!=="online" && field("recorder",t.recorder,100)}
         {source==="paper" && <><label><span>{t.signed}{required}</span><input name="signed" type="date" required /></label>{field("authorizationSource",t.source,200)}</>}
       </div>

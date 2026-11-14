@@ -8,6 +8,7 @@ import { reviewCopy } from "../../../lib/review-copy";
 import { currentRole } from "../../../lib/session";
 import { changeLanguage, logout } from "../actions";
 import { StaffNav } from "../staff-nav";
+import { HealthFilterForm } from "./filter-form";
 
 const categories = ["food", "diet", "medicationAllergy", "medication"] as const;
 type Category = typeof categories[number];
@@ -74,7 +75,7 @@ export default async function Health({ params, searchParams }: {
       <h1>{h.title}</h1>
       <section className="card">
         {kitchen && <p>{h.kitchenHelp}</p>}
-        {week && <form method="get" className="roster-filters">
+        {week && <HealthFilterForm>
           <div className="grid">
             <label>{t.week}<select name="week" defaultValue={week.id}>{weeks.map(item => <option key={item.id} value={item.id}>{campWeekLabel(item,locale)}</option>)}</select></label>
             {kitchen && <label>{r.place}<select name="places" defaultValue={includePending ? "all" : "confirmed"}>
@@ -89,7 +90,7 @@ export default async function Health({ params, searchParams }: {
               </select></label>
             </>}
           </div><button>{h.apply}</button>
-        </form>}
+        </HealthFilterForm>}
         {rows.length ? <div className="roster-scroll"><table className="roster-table">
           <thead><tr><th scope="col">{h.camper}</th>{!kitchen && <th scope="col">{housing.dorm}</th>}{(!kitchen || includePending) && <th scope="col">{r.place}</th>}
             {fields.map(key => <th key={key} scope="col">{t[key]}</th>)}</tr></thead>

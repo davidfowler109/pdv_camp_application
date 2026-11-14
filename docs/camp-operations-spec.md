@@ -50,3 +50,5 @@
 - Use fictional dorm inventory and staff teams for the first end-to-end test. Before a live week, confirm whether buildings contain separately assignable rooms and load real bed counts and teams.
 - Start with a simple suggestion among compatible dorms with availability. Use staff feedback to refine how the app ranks multiple matches.
 - Confirm who can configure weekly housing and who records destination handoffs on each route.
+
+Check-in roster controls — Changing Camp week or Expected arrival immediately submits the current filters. Keep Apply filters for name searches and manual submission. Changing menus refreshes the expected stop options and roster for the selected week without recording an arrival.

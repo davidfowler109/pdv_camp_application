@@ -1,5 +1,6 @@
 export const facilitiesCopy = {
   en:{
+    occupiedRooms:"Move or clear attendees in Event housing before removing their reserved rooms.",
     attendeeCapacity:"The attendance limit cannot be lower than the number of confirmed attendees.",
     attendeeAttendance:"Release the places of attendees using this option before turning it off.",
     calendar:"Facilities calendar", events:"Special events", add:"New event", edit:"Edit event", name:"Event name", start:"Arrival", end:"Checkout",
@@ -18,6 +19,7 @@ export const facilitiesCopy = {
     none:"No bookings this month.", back:"Back to special events", open:"Open event",
   },
   es:{
+    occupiedRooms:"Mueve o retira las asignaciones en Alojamiento del evento antes de quitar sus habitaciones reservadas.",
     attendeeCapacity:"El cupo no puede ser menor que el número de asistentes confirmados.",
     attendeeAttendance:"Libera los cupos de los asistentes que usan esta opción antes de desactivarla.",
     calendar:"Calendario de instalaciones", events:"Eventos especiales", add:"Nuevo evento", edit:"Editar evento", name:"Nombre del evento", start:"Llegada", end:"Salida",

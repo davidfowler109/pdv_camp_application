@@ -13,7 +13,7 @@ function read(form:FormData,key:string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-type SaveStatus = "saved"|"invalid"|"unavailable"|"conflict"|"dateError"|"attendanceError"|"roomsRequireOvernight"|"roomUnavailable"|"eventNameError"|"turnoverError"|"capacityError"|"feeError"|"staleEvent"|"attendeeCapacity"|"attendeeAttendance";
+type SaveStatus = "saved"|"invalid"|"unavailable"|"conflict"|"dateError"|"attendanceError"|"roomsRequireOvernight"|"roomUnavailable"|"eventNameError"|"turnoverError"|"capacityError"|"feeError"|"staleEvent"|"attendeeCapacity"|"attendeeAttendance"|"occupiedRooms";
 export type EventSaveError = {status:Exclude<SaveStatus,"saved">;detail?:string};
 
 async function writeEvent(form:FormData) {
@@ -67,6 +67,8 @@ async function writeEvent(form:FormData) {
           conflictMessage = conflict.room+" · "+conflict.booking;
           return "conflict";
         }
+        const occupied=(await tx.query("SELECT attendee_id FROM event_placement WHERE event_id=$1 AND NOT(dorm_id=ANY($2::integer[])) LIMIT 1",[id,rooms])).rows;
+        if(occupied.length)return "occupiedRooms";
         await tx.query(
           `INSERT INTO special_event(id,name,starts_at,ends_at,turnover_minutes,capacity,fee_cents,day_attendance,overnight_attendance,supervisor_required)
            VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
@@ -75,8 +77,8 @@ async function writeEvent(form:FormData) {
              day_attendance=excluded.day_attendance,overnight_attendance=excluded.overnight_attendance,supervisor_required=excluded.supervisor_required`,
           [id,name,start,end,turnover,capacity,fee,day,overnight,overnight && form.has("supervisor")],
         );
-        await tx.query("DELETE FROM event_room_reservation WHERE event_id=$1",[id]);
-        await tx.query("INSERT INTO event_room_reservation(event_id,dorm_id) SELECT $1,unnest($2::integer[])",[id,rooms]);
+        await tx.query("DELETE FROM event_room_reservation WHERE event_id=$1 AND NOT(dorm_id=ANY($2::integer[]))",[id,rooms]);
+        await tx.query("INSERT INTO event_room_reservation(event_id,dorm_id) SELECT $1,unnest($2::integer[]) ON CONFLICT DO NOTHING",[id,rooms]);
         return "saved";
       });
     } catch {

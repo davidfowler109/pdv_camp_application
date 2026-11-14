@@ -16,6 +16,7 @@ import { getVisitHousing, visitHousingIssues } from "../../../../lib/visit-housi
 import { visitHousingCopy } from "../../../../lib/visit-housing-copy";
 import { attendanceState } from "../../../../lib/visit-attendance-state";
 import { visitAttendanceCopy } from "../../../../lib/visit-attendance-copy";
+import { VisitorRosterFilters } from "./roster-filters";
 
 type Acknowledgment = {id:number; leader_name:string; wording:string; version:string; date:string; source:"online"|"desk"; evidence_source:string|null; recorded_by:string|null; current:boolean};
 type History = {id:number;operation:"edit"|"withdraw"|"restore";recorded_by:string;reason:string;date:string};
@@ -138,13 +139,7 @@ export default async function Visitors({params,searchParams}: {
         {item.date} · {t[(item.operation+"Operation") as "editOperation"|"withdrawOperation"|"restoreOperation"]} · {item.recorded_by} · {item.reason}
       </li>)}</ul> : <p>{t.noHistory}</p>}</details>
     </section>}
-    <section className="card"><form method="get"><input name="visit" type="hidden" value={id} /><div className="grid">
-      <label><span>{t.search}</span><input name="q" maxLength={100} defaultValue={search} /></label>
-      <label><span>{t.role}</span><select name="role" defaultValue={role}><option value="">{t.allRoles}</option>
-        <option value="student">{t.student}</option><option value="adult">{t.adult}</option><option value="leader">{t.leader}</option>
-      </select></label>
-      <label><span>{t.status}</span><select name="status" defaultValue={status}><option value="active">{t.active}</option><option value="withdrawn">{t.withdrawn}</option><option value="all">{t.allStatuses}</option></select></label>
-    </div><button>{t.searchButton}</button></form></section>
+    <section className="card"><VisitorRosterFilters locale={locale} visit={id} search={search} role={role} status={status} /></section>
     <section className="card roster-scroll">{visitors.length ? <table className="roster-table">
       <thead><tr><th scope="col">{t.last}</th><th scope="col">{t.first}</th><th scope="col">{t.role}</th><th scope="col">{t.age}</th><th scope="col">{t.housing}</th><th scope="col">{t.arrival}</th></tr></thead>
       <tbody>{visitors.map(visitor => {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
+import { eventHousingCopy } from "../../../lib/event-housing-copy";
 import { notFound, redirect } from "next/navigation";
 import { getDatabase } from "../../../lib/database";
 import { isLocale } from "../../../lib/copy";
@@ -58,7 +59,7 @@ export default async function Events({ params, searchParams }: {
         <td>{event.cancelled ? t.cancelled : event.rooms.length ? event.rooms.length+" · "+t.reserved : t.noRooms}</td>
       </tr>)}</tbody>
     </table></section> : <p>{t.empty}</p>}
-    {selected && <p><Link className="action-link" href={base+"/attendees?event="+selected.id}>{eventRegistrationCopy[locale].roster}</Link>{" "}
+    {selected && <p><Link className="action-link" href={base+"/attendees?event="+selected.id}>{eventRegistrationCopy[locale].roster}</Link>{" "}<Link className="action-link secondary" href={base+"/housing?event="+selected.id}>{eventHousingCopy[locale].title}</Link>{" "}
       {!selected.cancelled && process.env.PDV_LOCAL_DEMO === "1" && <Link href={base+"/register/"+selected.id}>{eventRegistrationCopy[locale].publicLink}</Link>}
     </p>}
     {selected?.cancelled && <section className="card"><h2>{selected.name}</h2><p>{t.cancelled}</p></section>}

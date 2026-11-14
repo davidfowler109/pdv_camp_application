@@ -45,7 +45,7 @@ async function open(): Promise<Store> {
   return new PGlite(path.resolve(".local", folder));
 }
 
-const migrationFiles = ["001-foundation.sql", "002-registration.sql", "003-staff-review.sql", "004-follow-up-reason.sql", "005-housing-inventory.sql", "006-desk-intake.sql", "007-check-in.sql", "008-departure.sql", "009-operational-corrections.sql", "010-open-ended-age-groups.sql", "011-weekly-staff.sql", "012-special-events.sql", "013-event-registration.sql", "014-signed-paper-forms.sql", "015-scholarship-distribution.sql", "016-scholarship-missionary.sql", "017-camp-payment.sql", "018-church-visits.sql", "019-church-visitor-registration.sql", "020-church-visit-housing.sql", "021-church-visit-attendance.sql", "022-church-visit-itinerary.sql", "023-visit-estimate-sharing.sql"];
+const migrationFiles = ["001-foundation.sql", "002-registration.sql", "003-staff-review.sql", "004-follow-up-reason.sql", "005-housing-inventory.sql", "006-desk-intake.sql", "007-check-in.sql", "008-departure.sql", "009-operational-corrections.sql", "010-open-ended-age-groups.sql", "011-weekly-staff.sql", "012-special-events.sql", "013-event-registration.sql", "014-signed-paper-forms.sql", "015-scholarship-distribution.sql", "016-scholarship-missionary.sql", "017-camp-payment.sql", "018-church-visits.sql", "019-church-visitor-registration.sql", "020-church-visit-housing.sql", "021-church-visit-attendance.sql", "022-church-visit-itinerary.sql", "023-visit-estimate-sharing.sql", "024-event-food-needs.sql", "025-event-housing.sql"];
 
 async function upgradeLocal(db: PGlite): Promise<Store> {
   const migrations = await Promise.all(migrationFiles.map(file => readFile(path.resolve("db", file), "utf8")));

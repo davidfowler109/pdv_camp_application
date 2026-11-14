@@ -9,11 +9,14 @@ import { currentRole } from "../../../../lib/session";
 import { ReviewFrame } from "../../intake/review-frame";
 import { AttendeeForm } from "../attendee-form";
 import { reviewAttendee } from "../registration-actions";
+import { getEventHousing,eventHousingIssues } from "../../../../lib/event-housing";
+import { eventHousingCopy } from "../../../../lib/event-housing-copy";
 
 type Attendee = {
   id:string; first_name:string; last_name:string; contact:string; attendance:"day"|"overnight";
   place_status:"pending"|"confirmed"|"released"; paid:number; rooming:"none"|"church"|"group"|null;
   church:string|null; rooming_code:string|null; food:string|null; accessibility:string|null;
+  food_answer:"none"|"yes"|"unknown"|null;diet_answer:"none"|"yes"|"unknown"|null;diet:string|null;
   authorization_date:string; authorization_source:string|null; recorder:string|null; source:"online"|"desk"|"paper";
 };
 const pageSize = 25;
@@ -75,6 +78,13 @@ export default async function Attendees({params,searchParams}:{
       : null,
   ]);
   const selected = detail?.rows[0];
+  const housing=await getEventHousing(db,eventId),h=eventHousingCopy[locale];
+  const housingLink="/"+locale+"/events/housing?event="+eventId;
+  const housingPublished=Boolean(housing?.event.housing_published_at)&&!event.cancelled&&housing!==null&&!eventHousingIssues(housing).length;
+  const roomLabel=(a:Attendee)=>{
+    const placement=housing?.placements.find(p=>p.attendee_id===a.id),room=housing?.rooms.find(r=>r.id===placement?.dorm_id);
+    return room ? room.building+" · "+room.name+" · "+(housingPublished?h.published:h.draft) : a.attendance==="overnight"&&a.place_status!=="released" ? h.unassigned : "—";
+  };
   const messages = {saved:t.saved,invalid:t.invalid,closed:t.closed,full:t.full,unavailable:t.unavailable};
   const status = query.status as keyof typeof messages | undefined;
   const preference = (a:Attendee) => a.rooming === "church" ? t.sameChurch+" · "+a.church
@@ -86,7 +96,7 @@ export default async function Attendees({params,searchParams}:{
   </>;
 
   return <ReviewFrame locale={locale} section="events/attendees" title={t.roster} event={eventId}>
-    <p><Link href={base+"?event="+eventId}>{event.name}</Link></p>
+    <p><Link href={base+"?event="+eventId}>{event.name}</Link> · <Link href={housingLink}>{h.title}</Link></p>
     {event.cancelled && <p className="notice">{t.cancelled}</p>}
     {formEnabled && <p>
       <Link className="action-link" href={makeLink({entry:"desk"})}>{t.desk}</Link>{" "}
@@ -101,8 +111,11 @@ export default async function Attendees({params,searchParams}:{
         <dt>{t.contact}</dt><dd>{selected.contact}</dd>
         <dt>{t.attendance}</dt><dd>{t[selected.attendance]}</dd>
         <dt>{t.place}</dt><dd>{t[selected.place_status]}</dd>
+        <dt>{h.title}</dt><dd><Link href={housingLink+"#attendee-"+selected.id}>{roomLabel(selected)}</Link></dd>
         {selected.rooming && <><dt>{t.preference}</dt><dd>{preference(selected)}</dd></>}
-        {selected.food && <><dt>{t.food}</dt><dd>{selected.food}</dd></>}
+        {selected.food_answer ? <><dt>{t.food}</dt><dd>{selected.food_answer==="yes" ? selected.food : t[selected.food_answer]}</dd></> :
+          selected.food && <><dt>{t.legacyFood}</dt><dd>{selected.food}</dd></>}
+        {selected.diet_answer && <><dt>{t.diet}</dt><dd>{selected.diet_answer==="yes" ? selected.diet : t[selected.diet_answer]}</dd></>}
         {selected.accessibility && <><dt>{t.accessibility}</dt><dd>{selected.accessibility}</dd></>}
         <dt>{t.authorization}</dt><dd>{selected.authorization_date} · {selected.source === "online" ? t.publicLink : t[selected.source]}</dd>
         {selected.authorization_source && <><dt>{t.source}</dt><dd>{selected.authorization_source}</dd></>}
@@ -113,7 +126,10 @@ export default async function Attendees({params,searchParams}:{
       {!event.cancelled && <>
         {selected.place_status !== "confirmed" && (selected.attendance === "day" ? event.day_attendance : event.overnight_attendance) &&
           <form action={reviewAttendee}>{actionFields("confirm")}<button>{t.confirm}</button></form>}
-        {selected.place_status !== "released" && <form action={reviewAttendee}>{actionFields("release")}<button>{t.release}</button></form>}
+        {selected.place_status !== "released" && <details><summary>{t.release}</summary><form action={reviewAttendee}>{actionFields("release")}
+          <div className="grid"><label><span>{h.actor} *</span><input name="actor" maxLength={160} required /></label>
+            <label><span>{h.reason} *</span><input name="reason" maxLength={1000} required /></label></div>
+          <button>{t.release}</button></form></details>}
         <details><summary>{t.payment}</summary>
           <form action={reviewAttendee}>{actionFields("payment")}
             <div className="grid">
@@ -133,10 +149,10 @@ export default async function Attendees({params,searchParams}:{
     {result.rows.length ? <section className="card roster-scroll">
       <table className="roster-table">
         <thead><tr><th scope="col">{t.attendee}</th><th scope="col">{t.attendance}</th><th scope="col">{t.place}</th>
-          <th scope="col">{t.preference}</th><th scope="col">{t.balance}</th></tr></thead>
+          <th scope="col">{t.preference}</th><th scope="col">{h.title}</th><th scope="col">{t.balance}</th></tr></thead>
         <tbody>{result.rows.map(a=><tr key={a.id}>
           <th scope="row"><Link href={makeLink({attendee:a.id,page:String(page)})}>{a.last_name}, {a.first_name}</Link></th>
-          <td>{t[a.attendance]}</td><td>{t[a.place_status]}</td><td>{preference(a)}</td><td>{balance(a.paid)}</td>
+          <td>{t[a.attendance]}</td><td>{t[a.place_status]}</td><td>{preference(a)}</td><td>{a.attendance==="overnight"&&a.place_status!=="released"?<Link href={housingLink+"#attendee-"+a.id}>{roomLabel(a)}</Link>:"—"}</td><td>{balance(a.paid)}</td>
         </tr>)}</tbody>
       </table>
       {pageCount > 1 && <p>

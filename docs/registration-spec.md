@@ -79,7 +79,9 @@ Show the privacy notice before consent. For the Spanish notice, confirm the orga
 
 - Camp Registration enters signed paper forms. Record how the form was received and who it came from when known, along with who entered it. This intake record is the accountable verification for routine paper submissions. Identify a witness separately when someone observed the signing. Follow PDV-001 when information conflicts or a custody concern arises.
 - Show a weekly follow-up queue above Registrations with counts for all open, overdue, due today, and undated follow-ups. Staff complete or reschedule follow-ups in Review registration.
+- Changing the camp week on Registrations immediately filters the roster and follow-up counts to that week, retaining the current name, advanced search, and follow-up filters and returning to page 1. Keep Apply filters for name and advanced searches.
 - Show the outstanding balance and participation permission status at a glance to staff working from the registration or check-in roster. Keep these as separate statuses and keep payment evidence and health details in their respective staff views.
+- Camper health filters immediately when Week, Category, or View changes, retaining the other selected filters. Kitchen's available Week and place-status filters behave the same way within its existing access restrictions. Keep Apply filters as a visible manual option.
 - Use the current walkthrough as the arrival screen baseline: bus roster, camper lookup, mark present, permission status, and suggested dorm with bed availability, Cabin Leaders and Camp Counselors, and a recorded reason when staff change the suggestion. Revisit the screen after the pilot if staff identify a gap.
 
 ## Acceptance scenarios

@@ -1,3 +1,4 @@
+import { CheckInRosterFilters } from "./roster-filters";
 import Link from "next/link";
 import { campWeekLabel, listCampWeeks } from "../../../lib/camp-week";
 import { getDatabase } from "../../../lib/database";
@@ -62,14 +63,7 @@ export default async function CheckIn({ params, searchParams }: {
     {week && <>
       <p><Link className="action-link secondary" href={base+"/dorms?week="+week.id}>{locale === "en" ? "Dorm assignments" : "Asignaciones de dormitorios"}</Link></p>
       <section className="card">
-        <form method="get">
-          <div className="grid">
-            <label>{t.week}<select name="week" defaultValue={week.id}>{weeks.map(item => <option key={item.id} value={item.id}>{campWeekLabel(item,locale)}</option>)}</select></label>
-            <label>{t.planned}<select name="stop" defaultValue={stop}><option value="">{t.all}</option>
-              {stops.map(item => <option key={item.stop} value={item.stop}>{item.stop}</option>)}</select></label>
-            <label>{t.search}<input type="search" name="q" defaultValue={search} maxLength={100} /></label>
-          </div><button>{t.filter}</button>
-        </form>
+        <CheckInRosterFilters locale={locale} week={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} stop={stop} stops={stops} search={search} />
       </section>
       {row && <section className="card" id="camper-check-in"><h2>{row.camper}</h2>
         <p>{r.place}: {r[row.place_status]} · {r.permission}: {r[row.participation]} · {r.balance}: {row.balance === null ? r.noFee : formatMoney(row.balance,locale)}</p>
