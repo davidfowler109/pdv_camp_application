@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { AppForm } from "../../app-form";
+import Link from "../../app-link";
 import { WeekSelector } from "../../week-selector";
 import { randomUUID } from "node:crypto";
 import { campWeekOptions, type CampWeekOption } from "../../../../lib/camp-week";
@@ -83,16 +84,16 @@ export default async function Page({ params, searchParams }: {
         </p>}
         {season && <p>{s.seasonHelp}</p>}
         <p>{t.allocated}: {codes.length} / {limit} · <strong>{t.remaining}: {remaining}</strong></p>
-        {season && role === "leadership" && <form action={manageScholarships}>
+        {season && role === "leadership" && <AppForm action={manageScholarships}>
           <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week.id} />
           <input type="hidden" name="scope" value="season" /><input type="hidden" name="operation" value="seasonLimit" />
           <label>{s.seasonLimit}<input type="number" name="limit" min={0} max={10000} defaultValue={limit} required /></label>
           <button>{s.saveLimit}</button>
-        </form>}
+        </AppForm>}
         {!season && role === "leadership" && <Link href={"/"+locale+"?week="+week.id+"#scholarship-limit"}>{locale === "en" ? "Change weekly scholarship limit" : "Cambiar el límite semanal de becas"}</Link>}
       </section>
       <section className="card"><h2>{t.issue}</h2>
-        {remaining === 0 ? <p>{season ? s.noSeasonAwards : t.noAwards}</p> : <form action={manageScholarships}>
+        {remaining === 0 ? <p>{season ? s.noSeasonAwards : t.noAwards}</p> : <AppForm action={manageScholarships}>
           <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week.id} />
           <input type="hidden" name="operation" value="issue" />
           {season && <input type="hidden" name="scope" value="season" />}
@@ -107,7 +108,7 @@ export default async function Page({ params, searchParams }: {
           </div>
           <label>{s.instructions}<textarea name="instructions" maxLength={1000} rows={3} /></label>
           <button>{t.issue}</button>
-        </form>}
+        </AppForm>}
       </section>
       {[...batches.values()].map(({issued,available,redeemed}) => <section className="card" key={issued.batch_id} id={"batch-"+issued.batch_id}>
         <h2>{issued.distributor} ({t[issued.distributor_role]})</h2>

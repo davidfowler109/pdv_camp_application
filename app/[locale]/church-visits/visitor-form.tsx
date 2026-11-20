@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../app-form";
+
+
 import { startTransition, useActionState, useState } from "react";
 import type { Locale } from "../../../lib/copy";
 import type { ChurchVisitor, VisitorMode, VisitorResult } from "../../../lib/church-visitors";
@@ -25,7 +28,7 @@ export function VisitorForm({locale,visit,id,mode,today,initial}: {
     {mode === "online" ? <a href={"/"+locale+"/church-visits/register/"+visit}>{t.another}</a> :
       <p><a href={back}>{t.back}</a>{mode === "desk" && <> · <a href={back+"&entry=desk"}>{t.another}</a></>}</p>}
   </section>;
-  return <form className="registration-form" action={dispatch} onSubmit={event => {
+  return <AppForm busy={pending} className="registration-form" action={dispatch} onSubmit={event => {
     event.preventDefault();
     if (pending) return;
     const data = new FormData(event.currentTarget);
@@ -81,5 +84,5 @@ export function VisitorForm({locale,visit,id,mode,today,initial}: {
     </div>{mode === "edit" && <p>{t.changeHelp}</p>}</section>}
     {result && <p className="notice" role="alert">{t[result]}</p>}
     <button disabled={pending}>{mode === "edit" ? t.save : t.submit}</button>
-  </form>;
+  </AppForm>;
 }

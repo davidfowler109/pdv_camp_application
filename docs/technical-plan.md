@@ -15,6 +15,10 @@ Run a fictional camp week from assisted registration through departure. A family
 
 ## Records and consistency
 
+Camp transportation — Migration 026 adds weekly routes, stops, revision checks, and an audited configuration/review history. Registration snapshots the selected bus arrangements in its existing details record, independently of actual travel events. Use shared browser-safe option formatting and server-side week/journey/version validation under the same week lock used by transportation setup. See [Camp transportation](camp-transport-spec.md).
+
+Interaction feedback — Shared forms and navigation links track actual pending work. Show the native progress cursor and a bilingual Working indicator while an action, upload, or navigation is pending. Disable the submitted form's controls, show the not-allowed cursor for unavailable controls, and block repeated submissions until completion. Keep submitted values in the request by capturing native GET form data before disabling controls. Validation and failure responses restore controls; page restoration clears navigation feedback. Track overlapping operations separately so one completed action cannot hide another action's progress. Keep keyboard behavior, existing disabled states, and reduced-motion preferences intact.
+
 | Area | Records and rules |
 | --- | --- |
 | Registration | Camp season and week, camper, registration, signer and helper, contacts and home directions, health information, and transport plans. Keep confirmation, participation permission, physical presence, and finance separate. Record notice version and authorization method, including paper source and witness when applicable. |

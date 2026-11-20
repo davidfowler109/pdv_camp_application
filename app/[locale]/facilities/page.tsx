@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "../app-link";
 import { getDatabase } from "../../../lib/database";
 import { facilitiesCopy } from "../../../lib/facilities-copy";
 import { churchVisitsCopy } from "../../../lib/church-visits-copy";

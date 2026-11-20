@@ -1,5 +1,6 @@
+import { AppForm } from "../../../app-form";
 import { randomUUID } from "node:crypto";
-import Link from "next/link";
+import Link from "../../../app-link";
 import { notFound } from "next/navigation";
 import { getDatabase } from "../../../../../lib/database";
 import { copy, isLocale } from "../../../../../lib/copy";
@@ -22,11 +23,11 @@ export default async function PublicChurchRegistration({params}: {params:Promise
   const t = churchVisitorCopy[locale];
   const staff = await currentRole() === "leadership";
   return <div className="public-registration">
-    <PublicRegistrationHeader><form action={changeLanguage}>
+    <PublicRegistrationHeader><AppForm action={changeLanguage}>
       <input name="locale" type="hidden" value={locale === "en" ? "es" : "en"} />
       <input name="section" type="hidden" value={"church-visits/register/"+id} />
       <button lang={locale === "en" ? "es" : "en"}>{copy[locale].switch}</button>
-    </form></PublicRegistrationHeader>
+    </AppForm></PublicRegistrationHeader>
     <main>{staff && <p><Link href={"/"+locale+"/church-visits/visitors?visit="+id}>{t.back}</Link></p>}
       <p className="registration-eyebrow">{t.registration}</p><h1>{visit.name}</h1>
       <p>{visit.church_name} · {visit.start} – {visit.end}</p>

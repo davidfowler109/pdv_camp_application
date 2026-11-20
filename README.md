@@ -38,14 +38,34 @@ For church group arrival and departure, open a visit and select **Visit arrival 
 
 For church trip planning, select the visit, then **Itinerary & budget**. Choose a day and add activities, meals, and expenses. Use expected counts while recruiting, or select registered counts in Budget planning. Prices can be per person or for the whole group, with role-specific quantities and optional overrides. Camp meals and packed lunches contribute to the kitchen preparation plan. Whole-visit charges are entered once. Review the budget and suggested traveler allowances, then **Publish a dated estimate** to create a copyable link with bilingual and browser print/PDF views. Published numbers stay fixed while the working plan changes. Archive/restore supports activity and cost corrections, and estimate links can be withdrawn/restored with a reason. Apply db/022-church-visit-itinerary.sql and db/023-visit-estimate-sharing.sql to hosted databases before deploying this stage. The local pilot applies both automatically.
 
+Camp bus arrangements are configured per week through **Week setup → Transportation setup**. Add vehicles/routes and pickup or return stops with local times, or copy another week's active arrangements. Registration and printed forms use those choices; check-in and departure offer the configured vehicles and stops alongside actual-travel exceptions. Changed plans are flagged for review without overwriting what was originally recorded. Apply db/026-camp-transport.sql and db/027-transport-review-audit.sql in order after earlier migrations before deploying to a hosted database. Local pilot upgrades are automatic. See the [transportation specification](docs/camp-transport-spec.md).
+
+For a church leader's whole-trip estimate, open **Church visits → select visit → Itinerary & budget → Download trip planning Excel**. The bilingual workbook always uses expected attendance and contains Trip summary, In-country estimates, and Additional trip costs. Edit the blue count and price cells and add airfare or other expenses to recalculate the group's cost and suggested traveler contributions. Blank prices remain incomplete. Individual visitor information is excluded and spreadsheet edits are not imported into the application. The download requires Camp Leadership. Run npm install after this change to add the workbook export dependency; no database migration is required.
+
 ## Azure staging
+
+
 
 Use the [Azure staging checklist](docs/azure-staging-checklist.md) for setup, rehearsal, and production handoff.
 
 ## Checks
+
+Staff applications now support confirmed deletion of unused drafts, leadership deletion of unused submissions, withdrawal with preserved history, and removal/replacement of mistaken uploads. Reviewed evidence removal flags the affected checklist and linked staff for reassessment. Current staff assignments are preserved until leadership reviews them. Restart the local demo for migration 029; hosted databases require db/029-staff-application-corrections.sql after 028.
+
+**Staff → Applications and preparation** provides the bilingual role-based staff application, private save-and-return links, searchable review queue, confidential pastor response link, printable pastor recommendation, signed document uploads and separate preparation/readiness review. Add staff member remains available. Public pilot entry is `/en/staff/apply` or `/es/staff/apply`; use only fictional data. Applicants do not need Microsoft accounts. Links can be copied and sent manually; no email is sent automatically. Approved new people stay inactive until preparation is reviewed. Season fees, shirt prices and training/celebration dates are editable within Applications. Restart the local demo to apply migration 028; hosted databases need db/028-staff-applications.sql after prior migrations. See [the staff application specification](docs/staff-applications-spec.md) for safeguards, missing source-form sections and production prerequisites.
+
+The November 2026 fictional pilot refresh uses the six advertised 2027 weeks, each with capacity 200. The first three have 100 confirmed registrations each: week one has 100 arrivals and completed departures; week two has 25 arrivals and no departures; week three has no arrivals. The remaining weeks have no registrations. All weeks have Blue Bus (Albrook 07:30/18:00), Bus 18 (Westland 08:00/18:30), and Bus 29 (La Espiga 08:30/19:00), with meeting notes. Existing housing names and bed counts are preserved, and special events and church visits start empty. `node scripts/seed-2027-pilot.mjs` stages and verifies this dataset from the current local housing inventory; stop the demo before running it. The script prints the new database folder and does not activate it. With the demo still stopped, put that folder's name in `.local/active-database`, then restart. The previous database remains intact; `.local/active-database.previous` records the previous selection from this refresh. Sample attendance timestamps represent the simulated 2027 camp progression.
+
+For planning-workbook changes, the export tests inspect the saved worksheet XML as well as the formulas and cached totals. Also open fresh English and Spanish exports in desktop Excel and confirm there is no repair warning; a successful library round trip alone does not establish Excel compatibility. Keep the default outline placement when using fit-to-page printing because ExcelJS 4.4 serializes custom outline properties in an order Excel rejects.
 
 ```powershell
 npm.cmd test
 npm.cmd run typecheck
 npm.cmd run build
 ```
+
+Volunteer applications now include role-specific screening and three explicit acknowledgments in English/Spanish. Leadership selects any additional document/training requirements per applicant. See [staff application specification](docs/staff-applications-spec.md) and sensitive decision PDV-004. Restart the local pilot for migration 030.
+
+Staff availability: restart the local demo for migration 031. Staff directory now records seasonal availability; assignment menus use available staff and provide recorded leadership exceptions. Existing assignments remain and missing availability is flagged.
+
+Camp rules acknowledgment is an explicit Camp Counselor review requirement with title, revision and HTTPS link or private PDF. Restart the local demo for migration 032. Existing applicants are not automatically opted in.

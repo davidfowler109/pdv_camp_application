@@ -1,0 +1,210 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { registerHooks } from 'node:module';
+import { readFile,readdir } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+
+// Run the actual route handlers against an isolated database and a simulated
+// authenticated role. No demo credentials or live pilot records are used.
+test('staff application APIs protect reference confidentiality, review actions, revisions and document access',async()=>{
+  const globals=globalThis as unknown as {staffApiTestDb?:PGlite;staffApiTestRole?:string|null};
+  const db=new PGlite();globals.staffApiTestDb=db;globals.staffApiTestRole=null;
+  const previous=process.env.PDV_LOCAL_DEMO;process.env.PDV_LOCAL_DEMO='1';
+  const hook=registerHooks({
+    resolve(specifier,context,next){if(specifier.startsWith('.')&&!/\.[a-z]+$/i.test(specifier))return next(specifier+'.ts',context);return next(specifier,context);},
+    load(url,context,next){
+      if(url.endsWith('/lib/database.ts'))return {format:'module',shortCircuit:true,source:'export async function getDatabase(){return globalThis.staffApiTestDb;}'};
+      if(url.endsWith('/lib/session.ts'))return {format:'module',shortCircuit:true,source:'export async function currentRole(){return globalThis.staffApiTestRole;}'};
+      return next(url,context);
+    },
+  });
+  try{
+    for(const file of (await readdir('db')).filter(n=>/^\d{3}-.+\.sql$/.test(n)).sort())await db.exec(await readFile('db/'+file,'utf8'));
+    const week=(await db.query<{id:number}>("INSERT INTO camp_week(name,minimum_age,maximum_age,capacity,starts_on,ends_on) VALUES('Fictional week',7,11,200,'2027-01-12','2027-01-16') RETURNING id")).rows[0].id;
+    const api=await import('../app/api/staff-applications/route.ts'),refs=await import('../app/api/staff-applications/reference/route.ts'),docs=await import('../app/api/staff-applications/[id]/documents/route.ts');
+    const request=(body:unknown)=>new Request('http://localhost/api/staff-applications',{method:'POST',headers:{origin:'http://localhost','content-type':'application/json'},body:JSON.stringify(body)});
+    const initial={first:'Fictional',last:'Counselor',birth:'2010-01-01',gender:'female',email:'fictional@example.test',phone:'DEMO INITIAL PHONE',address:'Fictional initial address',dataSigner:'Fictional Guardian',dataAuthority:'self',sharing:'yes',medication:'PRIVATE_INITIAL_HEALTH',governmentId:'DO_NOT_STORE'};
+    assert.equal((await api.POST(request({op:'start',season:2027,role:'equipante',data:initial}))).status,400);
+    const created=await api.POST(request({op:'start',season:2027,role:'equipante',data:{...initial,dataAuthority:'guardian'}}));assert.equal(created.status,201);
+    const {id,key}=await created.json();const get=()=>api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams({id,key})));
+    let record=await (await get()).json();assert.equal(record.data.medication,undefined);assert.equal(record.data.governmentId,undefined);assert.equal(record.resume_hash,undefined);
+    assert.equal(record.data.gender,initial.gender);assert.equal(record.data.phone,initial.phone);assert.equal(record.data.address,initial.address);assert.equal(record.data.email,initial.email);
+    assert.equal((await api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams({id,key:'wrong'})))).status,404);
+    assert.equal((await api.POST(request({op:'approved',id,key,revision:record.revision,reason:'Unauthorized'}))).status,403);
+    const data={...record.data,gender:'female',phone:'DEMO',address:'Fictional address',church:'Sample church',pastor:'Sample pastor',pastorPhone:'DEMO',testimony:'Fictional testimony',motivation:'Fictional motivation',experience:'None',skills:'Fictional skills',weeks:String(week),truth:'yes',referencePermission:'yes'};
+    const submitted=await api.POST(request({op:'submit',id,key,revision:record.revision,data}));assert.equal(submitted.status,200);
+    record=await (await get()).json();assert.equal(record.status,'submitted');
+    assert.equal((await api.POST(request({op:'save',id,key,revision:record.revision,data}))).status,403);
+    globals.staffApiTestRole='leadership';
+    const link=await api.POST(request({op:'referenceLink',id,revision:record.revision}));assert.equal(link.status,200);const refKey=(await link.json()).key;
+    assert.equal((await api.POST(request({op:'review',id,revision:record.revision,reason:'Stale review'}))).status,409);
+    globals.staffApiTestRole=null;
+    const reference={refName:'Fictional Pastor',refContact:'pastor@example.test',refRelationship:'PRIVATE_RELATIONSHIP',refExperience:'PRIVATE_EXPERIENCE',refReliability:'PRIVATE_RELIABILITY',refConcerns:'PRIVATE_CONCERNS',refRecommend:'yes',refSignature:'Fictional Pastor'};
+    assert.equal((await refs.POST(request({id,key,data:reference}))).status,404);
+    assert.equal((await refs.POST(request({id,key:refKey,data:reference}))).status,204);
+    assert.equal((await refs.POST(request({id,key:refKey,data:reference}))).status,404);
+    const publicData=await (await get()).json();assert.ok(!JSON.stringify(publicData).includes('PRIVATE_'));assert.equal(publicData.reference,undefined);assert.equal(publicData.preparation,undefined);
+    const upload=()=>{const form=new FormData();form.set('key',key);form.set('category','reference');form.set('source','Fictional pastor supplied a signed form');form.set('file',new File(['%PDF-1.4\nFictional fixture'],'test.pdf',{type:'application/pdf'}));return new Request('http://localhost/api/staff-applications/'+id+'/documents',{method:'POST',headers:{origin:'http://localhost'},body:form});};
+    const context={params:Promise.resolve({id})};assert.equal((await docs.POST(upload(),context)).status,403);
+    globals.staffApiTestRole='leadership';assert.equal((await docs.POST(upload(),context)).status,204);
+    const file=(await db.query<{id:string}>('SELECT id FROM staff_application_document WHERE application_id=$1',[id])).rows[0].id;
+    const fileRequest=new Request('http://localhost/api/staff-applications/'+id+'/documents?file='+file);
+    assert.equal((await docs.GET(fileRequest,context)).status,200);globals.staffApiTestRole=null;assert.equal((await docs.GET(fileRequest,context)).status,403);
+    const removeRequest=(body:unknown)=>new Request('http://localhost/api/staff-applications/'+id+'/documents',{method:'DELETE',headers:{origin:'http://localhost','content-type':'application/json'},body:JSON.stringify(body)});
+    const current=await (await get()).json();
+    assert.equal((await docs.DELETE(removeRequest({file,key,revision:current.revision,reason:'Cannot remove confidential reference',confirmed:true}),context)).status,403);
+    globals.staffApiTestRole='leadership';
+    assert.equal((await docs.DELETE(removeRequest({file,revision:current.revision-1,reason:'Stale request',confirmed:true}),context)).status,409);
+    assert.equal((await docs.DELETE(removeRequest({file,revision:current.revision,reason:'Wrong fictional file',confirmed:true}),context)).status,200);
+    assert.equal((await docs.GET(fileRequest,context)).status,404);
+    assert.equal((await db.query<{content:unknown}>('SELECT content FROM staff_application_document WHERE id=$1',[file])).rows[0].content,null);
+    globals.staffApiTestRole=null;
+    await db.query("UPDATE staff_application SET status='approved' WHERE id=$1",[id]);
+    await db.query("UPDATE staff_application SET preparation=preparation||'{\"backgroundDocumentRequired\":\"yes\"}'::jsonb WHERE id=$1",[id]);
+    const ownForm=new FormData();ownForm.set('key',key);ownForm.set('category','background');ownForm.set('source','Fictional applicant');ownForm.set('file',new File(['%PDF-1.4\nFictional own upload'],'own-proof.pdf',{type:'application/pdf'}));
+    assert.equal((await docs.POST(new Request('http://localhost/api/staff-applications/'+id+'/documents',{method:'POST',headers:{origin:'http://localhost'},body:ownForm}),context)).status,204);
+    const own=(await db.query<{id:string;filename:string}>("SELECT id,filename FROM staff_application_document WHERE application_id=$1 AND category='background'",[id])).rows[0];assert.equal(own.filename,'own-proof.pdf');
+    const ownDownload=new Request('http://localhost/api/staff-applications/'+id+'/documents?'+new URLSearchParams({file:own.id,key}));assert.equal((await docs.GET(ownDownload,context)).status,200);
+    const staffFile='33333333-3333-4333-8333-333333333333';await db.query("INSERT INTO staff_application_document(id,application_id,category,content_type,content,source,recorded_by) VALUES($1,$2,'policy','application/pdf',$3,'PRIVATE_STAFF_SOURCE','Camp Leadership (local pilot)')",[staffFile,id,Buffer.from('%PDF-1.4')]);
+    const listing=await (await docs.GET(new Request('http://localhost/api/staff-applications/'+id+'/documents?'+new URLSearchParams({key})),context)).json();assert.equal(listing.docs.length,1);assert.ok(!JSON.stringify(listing).includes('PRIVATE_STAFF_SOURCE'));
+    assert.equal((await docs.DELETE(removeRequest({file:staffFile,key,revision:listing.revision,reason:'Cannot remove staff evidence',confirmed:true}),context)).status,403);
+    assert.equal((await docs.DELETE(removeRequest({file:own.id,key,revision:listing.revision,reason:'',confirmed:true}),context)).status,200);assert.equal((await docs.GET(ownDownload,context)).status,404);
+    await db.query("UPDATE staff_application SET status='submitted' WHERE id=$1",[id]);
+    assert.equal((await api.POST(request({op:'delete',id,key,revision:(await (await get()).json()).revision,confirmed:true}))).status,409);
+    const createDraft=async()=>{
+      const response=await api.POST(request({op:'start',season:2027,role:'equipante',data:{...initial,dataAuthority:'guardian'}}));assert.equal(response.status,201);return response.json();
+    };
+    const disposable=await createDraft();
+    assert.equal((await api.POST(request({op:'delete',...disposable,revision:1}))).status,400);
+    assert.equal((await api.POST(request({op:'delete',...disposable,key:'wrong',revision:1,confirmed:true}))).status,403);
+    assert.equal((await api.POST(request({op:'delete',...disposable,revision:1,confirmed:true}))).status,200);
+    assert.equal((await api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams(disposable)))).status,404);
+    const unused=await createDraft();
+    assert.equal((await api.POST(request({op:'submit',...unused,revision:1,data}))).status,200);
+    assert.equal((await api.POST(request({op:'delete',...unused,revision:2,confirmed:true}))).status,409);
+    globals.staffApiTestRole='leadership';assert.equal((await api.POST(request({op:'delete',id:unused.id,revision:2,confirmed:true}))).status,200);globals.staffApiTestRole=null;
+    const withdrawing=await createDraft();assert.equal((await api.POST(request({op:'submit',...withdrawing,revision:1,data}))).status,200);
+    assert.equal((await api.POST(request({op:'withdraw',...withdrawing,revision:1,reason:'Stale withdrawal',confirmed:true}))).status,409);
+    assert.equal((await api.POST(request({op:'withdraw',...withdrawing,revision:2,reason:'Fictional change of plans',confirmed:true}))).status,200);
+    const withdrawnRecord=await (await api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams(withdrawing)))).json();assert.equal(withdrawnRecord.status,'withdrawn');
+    assert.equal((await api.POST(request({op:'save',...withdrawing,revision:3,data}))).status,403);
+    const hostile=new Request('http://localhost/api/staff-applications',{method:'POST',headers:{origin:'https://unrelated.example','content-type':'application/json'},body:'{}'});assert.equal((await api.POST(hostile)).status,403);
+    const oversized=new Request('http://localhost/api/staff-applications',{method:'POST',headers:{origin:'http://localhost','content-type':'application/json'},body:'x'.repeat(70000)});assert.equal((await api.POST(oversized)).status,413);
+    // Volunteer submission persists each answer and the exact acknowledgments.
+    const volunteer=await (await api.POST(request({op:'start',season:2027,role:'volunteer',data:{...initial,birth:'1990-01-01',dataAuthority:'self'}}))).json();
+    const answers={...data,birth:'1990-01-01',volunteerAreas:'program',believerYears:'8',volunteerConviction:'yes',volunteerConvictionPrivate:'yes',volunteerCharges:'no',volunteerRestrictions:'no',volunteerSafeguarding:'no',volunteerConduct:'yes',volunteerBelongings:'yes',volunteerAdmission:'yes'};
+    const missing=await api.POST(request({op:'submit',...volunteer,revision:1,locale:'es',data:{...answers,volunteerAdmission:''}}));assert.equal(missing.status,400);assert.ok((await missing.json()).problems.includes('volunteerAdmission'));
+    const volunteerSubmit=await api.POST(request({op:'submit',...volunteer,revision:1,locale:'es',data:answers}));assert.equal(volunteerSubmit.status,200);assert.equal((await volunteerSubmit.json()).data.volunteerConvictionPrivate,'yes');
+    const evidence=(await db.query<{volunteer_acknowledgment:{language:string;statements:{text:string;acknowledged:boolean}[];screening:Record<string,{privateDiscussion:boolean}>}}>('SELECT volunteer_acknowledgment FROM staff_application WHERE id=$1',[volunteer.id])).rows[0].volunteer_acknowledgment;
+    assert.equal(evidence.language,'es');assert.equal(evidence.statements.length,3);assert.ok(evidence.statements.every(s=>s.acknowledged&&s.text.length>100));assert.equal(evidence.screening.volunteerConviction.privateDiscussion,true);
+    globals.staffApiTestRole='leadership';assert.equal((await api.POST(request({op:'approved',id:volunteer.id,revision:2,reason:'Manual assessment, no automatic rejection'}))).status,200);
+    let v=(await db.query<{revision:number}>('SELECT revision FROM staff_application WHERE id=$1',[volunteer.id])).rows[0];
+    assert.equal((await api.POST(request({op:'checklist',id:volunteer.id,revision:v.revision,reason:'Requested certificate only',preparation:{backgroundDocumentRequired:'yes',screeningNotes:'PRIVATE_LEADERSHIP_REVIEW',volunteerScreeningReview:'yes'}}))).status,200);
+    globals.staffApiTestRole=null;
+    const vget=()=>api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams(volunteer)));
+    let publicVolunteer=await (await vget()).json();assert.equal(publicVolunteer.requirements.backgroundDocument,true);assert.equal(publicVolunteer.requirements.signedPolicy,false);assert.ok(!JSON.stringify(publicVolunteer).includes('PRIVATE_LEADERSHIP_REVIEW'));
+    const vupload=(category:string)=>{const f=new FormData();f.set('key',volunteer.key);f.set('category',category);f.set('source','Applicant');f.set('file',new File(['%PDF-1.4\nFictional'],'fixture.pdf',{type:'application/pdf'}));return new Request('http://localhost/api/staff-applications/'+volunteer.id+'/documents',{method:'POST',headers:{origin:'http://localhost'},body:f});};
+    const vc={params:Promise.resolve({id:volunteer.id})};assert.equal((await docs.POST(vupload('policy'),vc)).status,403);assert.equal((await docs.POST(vupload('guardian'),vc)).status,403);assert.equal((await docs.POST(vupload('background'),vc)).status,204);
+    publicVolunteer=await (await vget()).json();assert.equal((await api.POST(request({op:'prepare',...volunteer,revision:publicVolunteer.revision,data:{volunteerCharges:'yes',volunteerChargesPrivate:'yes'}}))).status,200);
+    const revised=(await db.query<{preparation:Record<string,string>;staff_review_required:boolean}>('SELECT preparation,staff_review_required FROM staff_application WHERE id=$1',[volunteer.id])).rows[0];assert.equal(revised.preparation.volunteerScreeningReview,undefined);assert.equal(revised.staff_review_required,true);
+    // Completing preparation is explicit, validated, persistent, and separate from readiness.
+    publicVolunteer=await (await vget()).json();
+    const incompletePreparation=await api.POST(request({op:'submitPreparation',...volunteer,revision:publicVolunteer.revision,data:{}}));assert.equal(incompletePreparation.status,400);assert.ok((await incompletePreparation.json()).problems.includes('emergency'));
+    const completedPreparation=await api.POST(request({op:'submitPreparation',...volunteer,revision:publicVolunteer.revision,data:{food:'none',diet:'none',medication:'none',medicationAllergy:'none',accommodation:'none',emergency:'Fictional contact',emergencyPhone:'DEMO',shirt:'M'}}));assert.equal(completedPreparation.status,200);
+    publicVolunteer=await (await vget()).json();assert.ok(publicVolunteer.data.preparationSubmittedAt);assert.equal(publicVolunteer.status,'approved');assert.equal(publicVolunteer.ready,false);
+    assert.equal((await db.query<{n:number}>("SELECT count(*)::integer n FROM staff_application_event WHERE application_id=$1 AND operation='submitPreparation'",[volunteer.id])).rows[0].n,1);
+    const preparationTimestamp=publicVolunteer.data.preparationSubmittedAt;
+    assert.equal((await api.POST(request({op:'prepare',...volunteer,revision:publicVolunteer.revision,data:{preparationSubmittedAt:'forged'}}))).status,200);
+    publicVolunteer=await (await vget()).json();assert.equal(publicVolunteer.data.preparationSubmittedAt,preparationTimestamp);
+    assert.equal((await api.POST(request({op:'prepare',...volunteer,revision:publicVolunteer.revision,data:{emergencyPhone:'Changed fictional contact'}}))).status,200);
+    publicVolunteer=await (await vget()).json();assert.equal(publicVolunteer.data.preparationSubmittedAt,undefined);
+    // Return links belong to the selected application, never to the latest applicant.
+    globals.staffApiTestRole='leadership';
+    const returnLink=async(application:string)=>{const revision=(await db.query<{revision:number}>('SELECT revision FROM staff_application WHERE id=$1',[application])).rows[0].revision;const response=await api.POST(request({op:'resumeLink',id:application,revision}));assert.equal(response.status,200);return (await response.json()).key as string;};
+    const firstKey=await returnLink(id),secondKey=await returnLink(volunteer.id);
+    const openReturn=(application:string,secret:string)=>api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams({id:application,key:secret})));
+    assert.equal((await (await openReturn(id,firstKey)).json()).id,id);assert.equal((await (await openReturn(volunteer.id,secondKey)).json()).id,volunteer.id);
+    assert.equal((await openReturn(id,secondKey)).status,404);assert.equal((await openReturn(volunteer.id,firstKey)).status,404);
+    const replacementKey=await returnLink(id);assert.equal((await openReturn(id,firstKey)).status,404);assert.equal((await openReturn(id,replacementKey)).status,200);assert.equal((await openReturn(volunteer.id,secondKey)).status,200);
+    // One leadership review saves notes, checklist and an optional decision atomically.
+    const reviewSnapshot=async(application:string)=>(await db.query<{revision:number;status:string;preparation:Record<string,string>;public_note:string;ready:boolean}>('SELECT revision,status,preparation,public_note,ready FROM staff_application WHERE id=$1',[application])).rows[0];
+    let reviewBefore=await reviewSnapshot(volunteer.id);
+    const checklist={volunteerScreeningReview:'yes',qualifications:'yes',fees:'yes',screeningNotes:'PRIVATE_REVIEW_NOTES'};
+    const combined={op:'saveReview',id:volunteer.id,key:secondKey,revision:reviewBefore.revision,preparation:checklist,reason:'PRIVATE_DECISION_NOTES',decision:'keep',publicNote:'Applicant-facing message'};
+    globals.staffApiTestRole=null;assert.equal((await api.POST(request(combined))).status,403);globals.staffApiTestRole='leadership';
+    assert.equal((await api.POST(request({...combined,revision:reviewBefore.revision-1}))).status,409);
+    assert.equal((await api.POST(request({...combined,decision:'information',publicNote:''}))).status,400);assert.deepEqual(await reviewSnapshot(volunteer.id),reviewBefore);
+    const combinedSave=await api.POST(request(combined));assert.equal(combinedSave.status,200);const combinedResult=await combinedSave.json();assert.equal(combinedResult.application.status,'approved');assert.equal(combinedResult.application.preparation.screeningNotes,'PRIVATE_REVIEW_NOTES');assert.equal(combinedResult.application.preparation.reviewNotes,'PRIVATE_DECISION_NOTES');assert.equal(combinedResult.application.public_note,'Applicant-facing message');
+    globals.staffApiTestRole=null;const applicantView=await (await openReturn(volunteer.id,secondKey)).json();assert.equal(applicantView.note,'Applicant-facing message');assert.ok(!JSON.stringify(applicantView).includes('PRIVATE_REVIEW_NOTES'));assert.ok(!JSON.stringify(applicantView).includes('PRIVATE_DECISION_NOTES'));globals.staffApiTestRole='leadership';
+    reviewBefore=await reviewSnapshot(volunteer.id);
+    assert.equal((await api.POST(request({...combined,revision:reviewBefore.revision,decision:'ready',reason:'Must not partially save',preparation:{...checklist,screeningNotes:'UNSAVED'}}))).status,400);assert.deepEqual(await reviewSnapshot(volunteer.id),reviewBefore);
+    assert.equal((await api.POST(request({op:'staffReviewComplete',id:volunteer.id,revision:reviewBefore.revision,confirmed:true,reason:'Existing assignments reviewed'}))).status,200);
+    reviewBefore=await reviewSnapshot(volunteer.id);
+    const readySave=await api.POST(request({...combined,revision:reviewBefore.revision,decision:'ready'}));assert.equal(readySave.status,200);assert.equal((await readySave.json()).application.ready,true);
+    // A failed audit write rolls back approval and newly-created operational staff.
+    const atomicDraft=await createDraft();assert.equal((await api.POST(request({op:'submit',...atomicDraft,revision:1,data}))).status,200);
+    const staffCount=Number((await db.query<{n:number}>('SELECT count(*)::integer n FROM staff_member')).rows[0].n);
+    await db.exec("CREATE FUNCTION reject_review_fixture() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.operation='saveReview' THEN RAISE EXCEPTION 'fictional audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_review_fixture BEFORE INSERT ON staff_application_event FOR EACH ROW EXECUTE FUNCTION reject_review_fixture();");
+    const approveTogether={op:'saveReview',id:atomicDraft.id,revision:2,preparation:{screeningNotes:'PRIVATE_APPROVAL_REVIEW'},reason:'Accepted pending preparation',decision:'approved',publicNote:'Welcome'};
+    assert.equal((await api.POST(request(approveTogether))).status,503);assert.equal((await reviewSnapshot(atomicDraft.id)).status,'submitted');assert.equal((await reviewSnapshot(atomicDraft.id)).revision,2);assert.equal(Number((await db.query<{n:number}>('SELECT count(*)::integer n FROM staff_member')).rows[0].n),staffCount);
+    await db.exec('DROP TRIGGER reject_review_fixture ON staff_application_event; DROP FUNCTION reject_review_fixture();');
+    assert.equal((await api.POST(request(approveTogether))).status,200);const approvedTogether=await reviewSnapshot(atomicDraft.id);assert.equal(approvedTogether.status,'approved');assert.equal(approvedTogether.ready,false);assert.equal(approvedTogether.preparation.screeningNotes,'PRIVATE_APPROVAL_REVIEW');assert.equal(approvedTogether.preparation.reviewNotes,'Accepted pending preparation');assert.equal(approvedTogether.public_note,'Welcome');
+    // Rules are elective, versioned and readable; acknowledgment replaces manual review ticks.
+    let counselor=await reviewSnapshot(atomicDraft.id);
+    const baseCounselor={reference:'yes',referenceSource:'Direct pastor response',counselorReview:'yes',counselorOrientation:'yes',screeningNotes:'PRIVATE_AGE_APPROPRIATE_REVIEW',qualifications:'yes',fees:'yes',guardian:'yes'};
+    const rules={campRulesRequired:'yes',campRulesTitle:'Camp Rules Book',campRulesRevision:'5',campRulesSource:'link',campRulesUrl:'https://example.test/rules-v5.pdf'};
+    const counselorPreparation={...baseCounselor,...rules};
+    let configured=await api.POST(request({op:'saveReview',id:atomicDraft.id,revision:counselor.revision,decision:'keep',preparation:{...counselorPreparation,campRulesRevision:''},reason:'Incomplete rule configuration'}));assert.equal(configured.status,400);assert.ok((await configured.json()).problems.includes('campRulesRevision'));assert.deepEqual(await reviewSnapshot(atomicDraft.id),counselor);
+    configured=await api.POST(request({op:'saveReview',id:atomicDraft.id,revision:counselor.revision,decision:'keep',preparation:counselorPreparation,reason:'Provide actual counselor rules',publicNote:'Please read the rules provided'}));assert.equal(configured.status,200);assert.ok((await configured.json()).missing.includes('campRulesWaiting'));
+    globals.staffApiTestRole=null;
+    const counselorGet=()=>api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams(atomicDraft)));
+    let counselorPublic=await (await counselorGet()).json();assert.equal(counselorPublic.requirements.campRules.title,'Camp Rules Book');assert.equal(counselorPublic.requirements.campRules.revision,'5');assert.equal(counselorPublic.requirements.campRules.url,rules.campRulesUrl);assert.equal(counselorPublic.requirements.backgroundDocument,false);assert.equal(counselorPublic.requirements.signedPolicy,false);assert.ok(!JSON.stringify(counselorPublic).includes('PRIVATE_AGE_APPROPRIATE_REVIEW'));
+    const counselorUpload=(category:string)=>{const f=new FormData();f.set('key',atomicDraft.key);f.set('category',category);f.set('source','Fictional camp document');f.set('file',new File(['%PDF-1.4\nFictional'],'camp-rules.pdf',{type:'application/pdf'}));return new Request('http://localhost/api/staff-applications/'+atomicDraft.id+'/documents',{method:'POST',headers:{origin:'http://localhost'},body:f});};
+    const cc={params:Promise.resolve({id:atomicDraft.id})};for(const category of ['background','policy','rules'])assert.equal((await docs.POST(counselorUpload(category),cc)).status,403);
+    const counselorAnswers={food:'none',diet:'none',medication:'none',medicationAllergy:'none',accommodation:'none',emergency:'Fictional guardian',emergencyPhone:'DEMO',shirt:'M',guardian:'Fictional Guardian',guardianRelationship:'Parent',guardianPermission:'yes',campRulesAcknowledgment:'Old identity',campRulesAcknowledgedAt:'2099-01-01T00:00:00Z'};
+    let response=await api.POST(request({op:'submitPreparation',...atomicDraft,revision:counselorPublic.revision,locale:'en',data:counselorAnswers}));assert.equal(response.status,400);assert.ok((await response.json()).problems.includes('campRulesWaiting'));
+    counselorAnswers.campRulesAcknowledgment=counselorPublic.requirements.campRules.identity;response=await api.POST(request({op:'submitPreparation',...atomicDraft,revision:counselorPublic.revision,locale:'en',data:counselorAnswers}));assert.equal(response.status,200);const acknowledged=await response.json();assert.ok(acknowledged.data.campRulesAcknowledgedAt);assert.notEqual(acknowledged.data.campRulesAcknowledgedAt,counselorAnswers.campRulesAcknowledgedAt);
+    const acknowledgment=(await db.query<{detail:{campRules:{title:string;revision:string;text:string;acknowledged:boolean}}}>("SELECT detail FROM staff_application_event WHERE application_id=$1 AND operation='submitPreparation' ORDER BY id DESC LIMIT 1",[atomicDraft.id])).rows[0].detail.campRules;assert.equal(acknowledgment.title,'Camp Rules Book');assert.equal(acknowledgment.revision,'5');assert.equal(acknowledgment.acknowledged,true);assert.ok(acknowledgment.text.includes('read'));
+    globals.staffApiTestRole='leadership';
+    const pdfUpload=await docs.POST(counselorUpload('rules'),cc);assert.equal(pdfUpload.status,201);const pdf=(await pdfUpload.json()).id;
+    const otherUpload=await docs.POST(counselorUpload('rules'),cc);assert.equal(otherUpload.status,201);const otherPdf=(await otherUpload.json()).id;
+    counselor=await reviewSnapshot(atomicDraft.id);const pdfPreparation={...counselorPreparation,campRulesRevision:'6',campRulesSource:'file',campRulesFile:pdf};
+    configured=await api.POST(request({op:'saveReview',id:atomicDraft.id,revision:counselor.revision,decision:'keep',preparation:pdfPreparation,reason:'Rules updated to PDF revision 6'}));assert.equal(configured.status,200);const changed=await configured.json();assert.equal(changed.application.data.preparationSubmittedAt,undefined);assert.ok(changed.missing.includes('campRulesWaiting'));
+    const premature=await api.POST(request({op:'saveReview',id:atomicDraft.id,revision:changed.revision,decision:'ready',preparation:pdfPreparation,reason:'Old acknowledgment cannot satisfy revision 6'}));assert.equal(premature.status,400);assert.equal((await premature.json()).status,'campRulesWaiting');
+    globals.staffApiTestRole=null;
+    const rulesDownload=(file:string,key=atomicDraft.key)=>new Request('http://localhost/api/staff-applications/'+atomicDraft.id+'/documents?'+new URLSearchParams({file,key}));
+    assert.equal((await docs.GET(rulesDownload(pdf),cc)).status,200);assert.ok((await docs.GET(rulesDownload(pdf),cc)).headers.get('Content-Disposition')?.startsWith('inline'));
+    assert.equal((await docs.GET(rulesDownload(otherPdf),cc)).status,404);assert.equal((await docs.GET(rulesDownload(pdf,'wrong'),cc)).status,403);
+    assert.equal((await docs.DELETE(new Request('http://localhost/api/staff-applications/'+atomicDraft.id+'/documents',{method:'DELETE',headers:{origin:'http://localhost','content-type':'application/json'},body:JSON.stringify({file:pdf,key:atomicDraft.key,revision:changed.revision,reason:'Cannot remove camp rules',confirmed:true})}),cc)).status,403);
+    counselorPublic=await (await counselorGet()).json();counselorAnswers.campRulesAcknowledgment=counselorPublic.requirements.campRules.identity;
+    response=await api.POST(request({op:'submitPreparation',...atomicDraft,revision:counselorPublic.revision,data:counselorAnswers}));assert.equal(response.status,200);
+    globals.staffApiTestRole='leadership';counselor=await reviewSnapshot(atomicDraft.id);const readyCounselor=await api.POST(request({op:'saveReview',id:atomicDraft.id,revision:counselor.revision,decision:'ready',preparation:pdfPreparation,reason:'Counselor preparation reviewed'}));assert.equal(readyCounselor.status,200);assert.equal((await readyCounselor.json()).application.ready,true);
+    counselor=await reviewSnapshot(atomicDraft.id);assert.equal((await docs.DELETE(new Request('http://localhost/api/staff-applications/'+atomicDraft.id+'/documents',{method:'DELETE',headers:{origin:'http://localhost','content-type':'application/json'},body:JSON.stringify({file:pdf,revision:counselor.revision,reason:'Wrong PDF, replace it',confirmed:true})}),cc)).status,200);assert.equal((await reviewSnapshot(atomicDraft.id)).ready,false);assert.equal((await docs.GET(rulesDownload(pdf),cc)).status,404);
+    counselor=await reviewSnapshot(atomicDraft.id);const removedFile=await api.POST(request({op:'saveReview',id:atomicDraft.id,revision:counselor.revision,decision:'keep',preparation:pdfPreparation,reason:'Selected removed file'}));assert.equal(removedFile.status,400);assert.ok((await removedFile.json()).problems.includes('campRulesFile'));
+    // Without an elected requirement, no camp-rules fields or acknowledgment block readiness.
+    const optionalDraft=await createDraft();assert.equal((await api.POST(request({op:'submit',...optionalDraft,revision:1,data}))).status,200);assert.equal((await api.POST(request({...approveTogether,id:optionalDraft.id,revision:2}))).status,200);
+    globals.staffApiTestRole=null;let optionalPublic=await (await api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams(optionalDraft)))).json();assert.equal(optionalPublic.requirements.campRules,undefined);
+    response=await api.POST(request({op:'submitPreparation',...optionalDraft,revision:optionalPublic.revision,data:{...counselorAnswers,campRulesAcknowledgment:''}}));assert.equal(response.status,200);
+    globals.staffApiTestRole='leadership';const optionalState=await reviewSnapshot(optionalDraft.id);assert.equal((await api.POST(request({op:'saveReview',id:optionalDraft.id,revision:optionalState.revision,decision:'ready',preparation:baseCounselor,reason:'No camp rules requirement elected'}))).status,200);
+    // Shared screening applies to Cabin Leaders without requiring Volunteer agreements.
+    globals.staffApiTestRole=null;
+    const guideStart=await api.POST(request({op:'start',season:2027,role:'guide',data:{...initial,first:'Fictional',last:'Leader',birth:'1990-01-01',dataAuthority:'self'}}));assert.equal(guideStart.status,201);const guideDraft=await guideStart.json();
+    const guideAnswers={...data,believerYears:'0',volunteerConviction:'yes',volunteerConvictionPrivate:'yes',volunteerConvictionDetails:'DO_NOT_KEEP_PRIVATE_DETAILS',volunteerCharges:'no',volunteerRestrictions:'no',volunteerSafeguarding:'no'};
+    let guideResponse=await api.POST(request({op:'submit',...guideDraft,revision:1,data:{...guideAnswers,believerYears:''}}));assert.equal(guideResponse.status,400);assert.ok((await guideResponse.json()).problems.includes('believerYears'));
+    guideResponse=await api.POST(request({op:'submit',...guideDraft,revision:1,locale:'es',data:guideAnswers}));assert.equal(guideResponse.status,200);const guideSubmitted=await guideResponse.json();assert.equal(guideSubmitted.data.believerYears,'0');assert.equal(guideSubmitted.data.volunteerConvictionPrivate,'yes');assert.equal(guideSubmitted.data.volunteerConvictionDetails,undefined);assert.equal(guideSubmitted.data.volunteerConduct,undefined);
+    const guideEvidence=(await db.query<{detail:{applicantScreening:{role:string;language:string;questions:{text:string;answer:string;privateDiscussion:boolean}[]}}}>("SELECT detail FROM staff_application_event WHERE application_id=$1 AND operation='submit'",[guideDraft.id])).rows[0].detail.applicantScreening;assert.equal(guideEvidence.role,'guide');assert.equal(guideEvidence.language,'es');assert.equal(guideEvidence.questions.length,4);assert.equal(guideEvidence.questions[0].privateDiscussion,true);assert.ok(guideEvidence.questions[0].text.startsWith('¿'));
+    globals.staffApiTestRole='leadership';assert.equal((await api.POST(request({op:'approved',id:guideDraft.id,revision:2,reason:'Human review; Yes is not automatic rejection'}))).status,200);
+    const guideChecks={reference:'yes',referenceSource:'Direct pastor response',guideScreeningReview:'yes',screening:'yes',training:'yes',policy:'yes',qualifications:'yes',screeningNotes:'PRIVATE_GUIDE_REVIEW'};
+    let guideState=await reviewSnapshot(guideDraft.id);assert.equal((await api.POST(request({op:'saveReview',id:guideDraft.id,revision:guideState.revision,preparation:guideChecks,reason:'Guide screening review saved',decision:'keep'}))).status,200);
+    globals.staffApiTestRole=null;
+    const guideGet=()=>api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams(guideDraft)));let guidePublic=await (await guideGet()).json();assert.ok(!JSON.stringify(guidePublic).includes('PRIVATE_GUIDE_REVIEW'));
+    // Approved legacy applicants can supply missing fields through preparation.
+    await db.query("UPDATE staff_application SET data=data-'believerYears'-'volunteerRestrictions' WHERE id=$1",[guideDraft.id]);guidePublic=await (await guideGet()).json();
+    guideResponse=await api.POST(request({op:'prepare',...guideDraft,revision:guidePublic.revision,data:{believerYears:'4',volunteerRestrictions:'no',volunteerCharges:'yes',volunteerChargesPrivate:'yes'}}));assert.equal(guideResponse.status,200);assert.equal((await guideResponse.json()).data.volunteerRestrictions,'no');
+    const guideChanged=(await db.query<{preparation:Record<string,string>;staff_review_required:boolean}>('SELECT preparation,staff_review_required FROM staff_application WHERE id=$1',[guideDraft.id])).rows[0];assert.equal(guideChanged.preparation.guideScreeningReview,undefined);assert.equal(guideChanged.preparation.screening,undefined);assert.equal(guideChanged.staff_review_required,true);
+    guidePublic=await (await guideGet()).json();assert.equal((await api.POST(request({op:'submitPreparation',...guideDraft,revision:guidePublic.revision,data:{food:'none',diet:'none',medication:'none',medicationAllergy:'none',accommodation:'none',emergency:'Fictional contact',emergencyPhone:'DEMO',shirt:'M',conduct:'yes'}}))).status,200);
+    globals.staffApiTestRole='leadership';guideState=await reviewSnapshot(guideDraft.id);assert.equal((await api.POST(request({op:'staffReviewComplete',id:guideDraft.id,revision:guideState.revision,reason:'Staff assignments reviewed',confirmed:true}))).status,200);
+    guideState=await reviewSnapshot(guideDraft.id);const guideReady=await api.POST(request({op:'saveReview',id:guideDraft.id,revision:guideState.revision,preparation:guideChecks,reason:'Applicant answers and independent screening reviewed',decision:'ready'}));assert.equal(guideReady.status,200);assert.equal((await guideReady.json()).application.ready,true);
+    process.env.PDV_LOCAL_DEMO='0';assert.equal((await get()).status,404);
+  }finally{hook.deregister();if(previous===undefined)delete process.env.PDV_LOCAL_DEMO;else process.env.PDV_LOCAL_DEMO=previous;delete globals.staffApiTestDb;delete globals.staffApiTestRole;await db.close();}
+});

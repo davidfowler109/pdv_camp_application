@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../app-form";
+
+
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { Locale } from "../../../lib/copy";
@@ -7,10 +10,11 @@ import { departureCopy } from "../../../lib/departure-copy";
 import { saveDeparture } from "./actions";
 
 export type BusCandidate = {
-  id:string; camper:string; stop:string|null; bus_key:string|null; version:string|null; handoff_required:boolean;
+  id:string; camper:string; stop:string|null; stop_key?:string; stop_label?:string; transport_review?:boolean; details?:Record<string,string>; bus_key:string|null; version:string|null; handoff_required:boolean;
 };
 
-export function BusDeparture({locale,week,candidates,buses,search,open}:{
+export function BusDeparture({locale,week,candidates,buses,search,open,configuredVehicles,configuredStops}:{
+  configuredVehicles:string[];configuredStops:{value:string;label:string}[];
   locale:Locale; week:number; candidates:BusCandidate[]; buses:{key:string;name:string;departed:boolean}[]; search:string; open:boolean;
 }) {
   const t = departureCopy[locale];
@@ -21,19 +25,19 @@ export function BusDeparture({locale,week,candidates,buses,search,open}:{
   const existing = buses.find(item => item.key === busKey);
   const boarded = candidates.filter(row => row.bus_key === busKey);
   const waiting = candidates.filter(row => row.bus_key === null);
-  const stops = [...new Set(waiting.map(row => row.stop ?? ""))].sort(new Intl.Collator(locale).compare);
-  const roster = [...boarded,...waiting.filter(row => route === "all" || route === "stop:"+(row.stop ?? ""))];
+  const stops=[...new Map([...configuredStops,...waiting.map(row=>({value:row.stop_key??row.stop??"",label:row.stop_label??row.stop??t.noStop}))].map(stop=>[stop.value,stop])).values()];
+  const roster = [...boarded,...waiting.filter(row => route === "all" || route === "stop:"+(row.stop_key ?? row.stop ?? ""))];
 
   return <details>
     <summary>{t.batchBus}</summary>
     <p>{t.batchHelp}</p>
     <div className="grid">
       <label>{t.busName}<input value={bus} onChange={event => setBus(event.target.value)} maxLength={100} list="batch-bus-names" /></label>
-      <datalist id="batch-bus-names">{buses.filter(item => !item.departed).map(item => <option key={item.key} value={item.name} />)}</datalist>
+      <datalist id="batch-bus-names">{[...new Set([...configuredVehicles,...buses.filter(item=>!item.departed).map(item=>item.name)])].map(name=><option key={name} value={name}/>)}</datalist>
       <label>{t.plannedStop}<select value={route} onChange={event => setRoute(event.target.value)}>
         <option value="">{t.chooseStop}</option>
         <option value="all">{t.allStops}</option>
-        {stops.map(stop => <option key={stop} value={"stop:"+stop}>{stop || t.noStop}</option>)}
+        {stops.map(stop => <option key={stop.value} value={"stop:"+stop.value}>{stop.label}</option>)}
       </select></label>
     </div>
     {existing?.departed ? <p role="status">{t.departed}</p> : name && (
@@ -61,7 +65,7 @@ function BusChecklist({locale,week,bus,roster,boarded,search,open}:{
     });
   }
 
-  return <form action={saveDeparture}>
+  return <AppForm action={saveDeparture}>
     <input type="hidden" name="operation" value="batchBus" />
     <input type="hidden" name="locale" value={locale} />
     <input type="hidden" name="week" value={week} />
@@ -76,7 +80,7 @@ function BusChecklist({locale,week,bus,roster,boarded,search,open}:{
       <ul>{roster.map(row => <li key={row.id}>
         <label className="check"><input name="selected" type="checkbox" value={row.id}
           checked={selected.has(row.id)} onChange={event => toggle(row.id,event.target.checked)} />
-          {row.camper}{row.stop ? " · "+row.stop : ""}{row.bus_key ? " · "+t.boarded : ""}
+          {row.camper}{row.stop_label ? " · "+row.stop_label : row.stop ? " · "+row.stop : ""}{row.transport_review ? " · "+(locale==="es"?"Transporte por revisar":"Transportation needs review") : ""}{row.bus_key ? " · "+t.boarded : ""}
         </label>
         {row.handoff_required && <small>{t.handoffNeeded}</small>}
         {selected.has(row.id) && !row.bus_key && <label className="check">
@@ -94,7 +98,7 @@ function BusChecklist({locale,week,bus,roster,boarded,search,open}:{
     </label>
     <label>{t.staff}<input name="actor" required maxLength={100} /></label>
     <BatchSubmit label={t.markBatch(selected.size)} disabled={!selected.size} />
-  </form>;
+  </AppForm>;
 }
 
 function BatchSubmit({label,disabled}:{label:string;disabled:boolean}) {

@@ -1,5 +1,10 @@
+import { staffAvailability,staffRoleEligible,type StaffAvailability } from "../../lib/staff-availability";
+import { staffAvailabilityCopy } from "../../lib/staff-availability-copy";
+import { AvailabilityOverrideFields } from "./staff/availability-fields";
+import { AppForm } from "./app-form";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "./app-link";
+import { campTransportCopy } from "../../lib/camp-transport-copy";
 import { StaffNav } from "./staff-nav";
 import { campWeekOptions } from "../../lib/camp-week";
 import { WeekSelector } from "./week-selector";
@@ -17,7 +22,7 @@ import { availability, camperBedCapacity } from "../../lib/housing";
 import { currentRole, roles } from "../../lib/session";
 
 type Week = { id: number; name: string; minimum_age: number; maximum_age: number|null; capacity: number; fee_cents: number | null; early_bird_cents:number|null; early_deadline:string|null; award_limit: number; start: string|null; end: string|null };
-type Staff = { id: number; name: string; skills:string[]; active:boolean; adult: boolean; cabin_ids:number[] };
+type Staff = { id: number; name: string; skills:string[]; active:boolean; adult: boolean; cabin_ids:number[];availability?:StaffAvailability };
 type Dorm = {
   id: number; name: string; building: string; physical_beds: number; usable_beds: number; override_beds: number|null; active:boolean; needs_cleaning:boolean; configured:boolean;
   guest_beds: number; occupants: number; minimum_age: number; maximum_age: number|null; gender_group: "female" | "male" | null;
@@ -26,7 +31,10 @@ type Dorm = {
 
 function DormForm({ locale, week, staff, dorm }: { locale: Locale; week: Week; staff: Staff[]; dorm: Dorm }) {
   const t = copy[locale], h = housingCopy[locale];
-  return <form action={saveDorm}>
+  const a=staffAvailabilityCopy[locale];
+  const eligible=(role:'guide'|'equipante')=>staff.filter(member=>dorm.staff_slots.includes(role+':'+member.id)||(member.active&&member.cabin_ids.every(id=>id===dorm.id)&&member.skills.includes(role)&&staffRoleEligible(member.availability,role,member.adult)));
+  const choice=(member:Staff,role:'guide'|'equipante')=><label className="check" key={member.id}><input type="checkbox" name="staff" value={role+':'+member.id} defaultChecked={dorm.staff_slots.includes(role+':'+member.id)}/>{member.name}{member.availability?.state!=='available'&&<span className="badge warn">{a[member.availability?.state??'unknown']}</span>}</label>;
+  return <AppForm action={saveDorm}>
     <input type="hidden" name="locale" value={locale} />
     <input type="hidden" name="week" value={week.id} />
     <input type="hidden" name="dorm" value={dorm.id} />
@@ -40,19 +48,18 @@ function DormForm({ locale, week, staff, dorm }: { locale: Locale; week: Week; s
       <label><span>{t.max} <small>{h.openAge}</small></span><input type="number" name="max" min={7} max={18} defaultValue={(dorm.configured ? dorm.maximum_age : week.maximum_age) ?? ""} /></label>
     </div>
     <label className="check"><input type="checkbox" name="active" defaultChecked={dorm?.in_service ?? true} />{t.active}</label>
-    {(["guide", "equipante"] as const).map(role => <fieldset key={role}>
-      <legend>{role === "guide" ? t.guides : t.helpers}</legend>
-      {staff.filter(member => dorm.staff_slots.includes(role+":"+member.id) || (member.active && member.cabin_ids.every(id => id === dorm.id) && member.skills.includes(role) && (role === "equipante" || member.adult))).map(member =>
-        <label className="check" key={member.id}><input type="checkbox" name="staff" value={role+":"+member.id} defaultChecked={dorm.staff_slots.includes(role+":"+member.id)} />{member.name}</label>
-      )}
-    </fieldset>)}
+    {(['guide','equipante'] as const).map(role=><fieldset key={role}><legend>{role==='guide'?t.guides:t.helpers}</legend>{eligible(role).filter(member=>dorm.staff_slots.includes(role+':'+member.id)||member.availability?.state==='available').map(member=>choice(member,role))}</fieldset>)}
+    {(['guide','equipante'] as const).some(role=>eligible(role).some(member=>!dorm.staff_slots.includes(role+':'+member.id)&&member.availability?.state!=='available'))&&<details><summary>{a.override}</summary>
+      {(['guide','equipante'] as const).map(role=><fieldset key={role}><legend>{role==='guide'?t.guides:t.helpers}</legend>{eligible(role).filter(member=>!dorm.staff_slots.includes(role+':'+member.id)&&member.availability?.state!=='available').map(member=>choice(member,role))}</fieldset>)}
+      <AvailabilityOverrideFields locale={locale} required={false}/>
+    </details>}
     <button>{t.saveDorm}</button>
-  </form>;
+  </AppForm>;
 }
 
 function WeekForm({ locale, week }: { locale:Locale; week?:Week }) {
   const t = copy[locale], h = housingCopy[locale], review = reviewCopy[locale];
-  return <form action={saveWeek}>
+  return <AppForm action={saveWeek}>
     <input type="hidden" name="locale" value={locale} />
     {week && <input type="hidden" name="week" value={week.id} />}
     <div className="grid">
@@ -67,7 +74,7 @@ function WeekForm({ locale, week }: { locale:Locale; week?:Week }) {
       <label>{campPaymentCopy[locale].earlyDeadline}<input name="earlyDeadline" type="date" defaultValue={week?.early_deadline ?? ""} /></label>
       <label>{review.limit}<input id={week ? "scholarship-limit" : undefined} name="awardLimit" type="number" min={0} max={250} defaultValue={week?.award_limit ?? 0} required /></label>
     </div><p className="muted">{campPaymentCopy[locale].earlyHelp}</p><button>{week ? t.saveWeek : h.newWeek}</button>
-  </form>;
+  </AppForm>;
 }
 
 export default async function Page({ params, searchParams }: {
@@ -109,7 +116,8 @@ export default async function Page({ params, searchParams }: {
         ]);
         week = selected;
         dorms = housing.rows;
-        staff = members.rows;
+        const availabilityMap=await staffAvailability(db,selected.id);
+        staff = members.rows.map(member=>({...member,availability:availabilityMap.get(member.id)}));
       }
     } catch (error) {
       console.error("Pilot database unavailable", error instanceof Error ? error.name : "Unknown error");
@@ -120,8 +128,8 @@ export default async function Page({ params, searchParams }: {
     <header><div>
       <div className="brand"><Image src="/palabra-de-vida.png" width={118} height={54} alt="Palabra de Vida Panamá" /><small>{t.pilot}</small></div>
       <div className="actions">
-        <form action={changeLanguage}><input type="hidden" name="locale" value={locale === "es" ? "en" : "es"} />{week && <input type="hidden" name="week" value={week.id} />}<button lang={locale === "es" ? "en" : "es"}>{t.switch}</button></form>
-        {role && <form action={logout}><input type="hidden" name="locale" value={locale} /><button>{t.logout}</button></form>}
+        <AppForm action={changeLanguage}><input type="hidden" name="locale" value={locale === "es" ? "en" : "es"} />{week && <input type="hidden" name="week" value={week.id} />}<button lang={locale === "es" ? "en" : "es"}>{t.switch}</button></AppForm>
+        {role && <AppForm action={logout}><input type="hidden" name="locale" value={locale} /><button>{t.logout}</button></AppForm>}
       </div>
     </div></header>
     <main>
@@ -132,22 +140,23 @@ export default async function Page({ params, searchParams }: {
       {status === "saved" && <p role="status" className="notice">{t.saved}</p>}
       {status === "facilityConflict" && <p role="alert" className="notice">{facilitiesCopy[locale].weekConflict}</p>}
       {status === "groupConflict" && <p role="alert" className="notice">{h.groupConflict}</p>}
+      {status === "availabilityRequired" && <p role="alert" className="notice">{staffAvailabilityCopy[locale].availabilityRequired}</p>}
       {status === "invalid" && <p role="alert" className="notice">{t.invalid}</p>}
       {status === "denied" && <p role="alert" className="notice">{t.denied}</p>}
       {status === "unavailable" && <p role="alert" className="notice">{t.unavailable}</p>}
       {!role ? <section className="card">
         <h2>{t.access}</h2>
-        {process.env.PDV_LOCAL_DEMO === "1" ? <form action={login}>
+        {process.env.PDV_LOCAL_DEMO === "1" ? <AppForm action={login}>
           <input type="hidden" name="locale" value={locale} />
           <div className="grid">
             <label>{t.role}<select name="role">{roles.map(item => <option value={item} key={item}>{t[item]}</option>)}</select></label>
             <label>{t.password}<input name="password" type="password" autoComplete="current-password" required /></label>
           </div>
           <button>{t.login}</button>
-        </form> : <p>{t.unavailable}</p>}
+        </AppForm> : <p>{t.unavailable}</p>}
       </section> : role === "guide" ? <p>{t.denied}</p> : !week ? <p role="alert">{t.unavailable}</p> : <>
         <section className="card">
-          <h2>{t.week}</h2>
+          <h2>{t.week}</h2>{editable&&<p><Link className="action-link secondary" href={"/"+locale+"/transport?week="+week.id}>{campTransportCopy[locale].title}</Link></p>}
           {availableWeeks.length > 1 && <WeekSelector key={"week-selector-" + week.id} weeks={campWeekOptions(availableWeeks,locale)}
             selected={week.id} label={t.week} submitLabel={locale === "en" ? "View week" : "Ver semana"} />}
           <p>{week.name} · {t.capacity} {week.capacity} · {review.fee}: {week.fee_cents === null ? review.noFee : formatMoney(week.fee_cents,locale)}</p>
@@ -165,6 +174,7 @@ export default async function Page({ params, searchParams }: {
             <h3>{dorm.name}</h3><p className="muted">{dorm.building} · {dorm.gender_group ? t[dorm.gender_group] + " · " + (dorm.maximum_age === null ? dorm.minimum_age + "+" : dorm.minimum_age + "–" + dorm.maximum_age) : h.unset}</p>
             <span className={state === "ready" && !dorm.needs_cleaning ? "badge" : "badge warn"}>{state !== "closed" && dorm.needs_cleaning ? h.cleaning : stateLabel}</span>
             <p>{t.open}: {beds}<br />{t.usable}: {dorm.usable_beds} · {t.guests}: {dorm.guest_beds}<br />{t.guides}: {guides.map(person => person.name).join(", ") || "—"}<br />{t.helpers}: {helpers.map(person => person.name).join(", ") || "—"}</p>
+            {[...guides,...helpers].some(member=>member.availability?.state!=='available')&&<p className="notice">{[...guides,...helpers].filter(member=>member.availability?.state!=='available').map(member=>member.name+': '+staffAvailabilityCopy[locale][member.availability?.state??'unknown']).join(' · ')}</p>}
             {editable && <details><summary>{h.configure}</summary><DormForm key={JSON.stringify(dorm)} locale={locale} week={week!} staff={staff} dorm={dorm} /></details>}
           </section>;
         })}</div>

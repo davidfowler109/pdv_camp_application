@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "./app-form";
+
+
 import type { ReactNode } from "react";
 
 export function WeekSelector({ weeks, selected, label, submitLabel, children }: {
@@ -9,7 +12,7 @@ export function WeekSelector({ weeks, selected, label, submitLabel, children }: 
   submitLabel: string;
   children?: ReactNode;
 }) {
-  return <form method="get">
+  return <AppForm method="get">
     {children}
     <label>{label}
       <select name="week" defaultValue={selected} onChange={event => event.currentTarget.form?.requestSubmit()}>
@@ -17,5 +20,5 @@ export function WeekSelector({ weeks, selected, label, submitLabel, children }: 
       </select>
     </label>
     <noscript><button type="submit">{submitLabel}</button></noscript>
-  </form>;
+  </AppForm>;
 }

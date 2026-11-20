@@ -1,16 +1,20 @@
 "use client";
 
+import { AppForm } from "./app-form";
+
+
 import { Fragment, useActionState, useState } from "react";
 import type { Locale } from "../../lib/copy";
 import { campPaymentCopy } from "../../lib/camp-payment-copy";
 import { registrationCopy } from "../../lib/registration-copy";
 import { rosterCopy } from "../../lib/roster-copy";
-import { campBusStops, campPickupLabel, healthFields, noticeVersion, type IntakeChannel } from "../../lib/registration";
+import { healthFields, noticeVersion, type IntakeChannel } from "../../lib/registration";
+import { transportStopLabel,transportVersion,type TransportStop } from "../../lib/camp-transport-options";
 import { submitRegistration } from "./registration-actions";
 import { signedFormCopy } from "../../lib/signed-form-copy";
 import { SignedFormPicker, SignedFormUpload, uploadSignedForms, type PendingSignedForm } from "./signed-form-files";
 
-type RegistrationWeek = {id:number;label:string;priceLabel?:string};
+type RegistrationWeek = {id:number;label:string;priceLabel?:string;stops:TransportStop[]};
 
 export function RegistrationForm({ locale, channel, id, weeks, selectedWeek }: {
   locale: Locale; channel: IntakeChannel; id: string; selectedWeek?:number; weeks: RegistrationWeek[];
@@ -31,7 +35,8 @@ export function RegistrationForm({ locale, channel, id, weeks, selectedWeek }: {
   }, null);
   const [authorized, setAuthorized] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>(selectedWeek ? {week:String(selectedWeek)} : {});
-  const setField = (name: string, value: string) => setAnswers(previous => ({ ...previous, [name]: value }));
+  const setField = (name: string, value: string) => setAnswers(previous => ({ ...previous, [name]: value,
+    ...(name==="week" ? {arrivalStop:"",departureStop:""} : {}) }));
   const requiredMark = <span className="required-mark" aria-hidden="true"> *</span>;
   const input = (name: string, label: string, required = true, type = "text") =>
     <label><span>{label}{required && requiredMark}</span><input name={name} type={type} value={answers[name] ?? ""} onChange={event => setField(name, event.currentTarget.value)} maxLength={type === "text" ? 1000 : undefined} required={required} /></label>;
@@ -42,6 +47,12 @@ export function RegistrationForm({ locale, channel, id, weeks, selectedWeek }: {
     </select></label>;
   const weekField = choice("week",t.week,weeks.map(week => [String(week.id),week.label]));
   const displayedPrice = weeks.find(week=>String(week.id) === answers.week)?.priceLabel;
+  const stops=weeks.find(week=>String(week.id)===answers.week)?.stops??[];
+  const transportChoice=(leg:"arrival"|"departure")=><>
+    {choice(leg+"Stop",leg==="arrival"?t.arrivalStop:t.departureStop,stops.filter(stop=>stop.leg===leg).map(stop=>[stop.id,transportStopLabel(stop,locale)]))}
+    <input type="hidden" name={leg+"StopVersion"} value={(()=>{const stop=stops.find(stop=>stop.id===answers[leg+"Stop"]);return stop?transportVersion(stop):"";})()}/>
+    {!stops.some(stop=>stop.leg===leg)&&<p className="notice">{locale==="es"?"El campamento aún no ha configurado esta ruta. Consulta al personal antes de elegir el autobús.":"Camp has not configured this bus journey yet. Contact staff before choosing camp transportation."}</p>}
+  </>;
   if (status === "saved" && channel === "paper") return <>
     <p className="notice" role="status">{t.saved}{uploaded && " "+attachment.uploaded}</p>
     {files.length > 0 && <section className="card">
@@ -53,7 +64,7 @@ export function RegistrationForm({ locale, channel, id, weeks, selectedWeek }: {
   </>;
   if (status === "saved") return <><p className="notice" role="status">{t.saved}</p>{channel !== "online" && <a href={"/"+locale+"/intake/new?week="+answers.week+(channel === "paper" ? "&method=paper" : "")}>{rosterCopy[locale].newAnother}</a>}</>;
 
-  return <form action={action} className="registration-form">
+  return <AppForm busy={busy} action={action} className="registration-form">
     <input type="hidden" name="id" value={id} /><input type="hidden" name="locale" value={locale} />
     {channel === "online" && <section className="card">
       {weekField}
@@ -101,9 +112,9 @@ export function RegistrationForm({ locale, channel, id, weeks, selectedWeek }: {
       </div></section>
       <section className="card"><h2>{t.transport}</h2><div className="grid">
         {choice("arrival",t.arrival,[["bus",t.bus],["own",t.own]])}
-        {answers.arrival === "bus" && choice("arrivalStop",t.arrivalStop,campBusStops.map(stop=>[stop.name,campPickupLabel(stop,locale)]))}
+        {answers.arrival === "bus" && transportChoice("arrival")}
         {choice("departure",t.departure,[["bus",t.bus],["own",t.own]])}
-        {answers.departure === "bus" && choice("departureStop",t.departureStop,campBusStops.map(stop=>[stop.name,stop.name]))}
+        {answers.departure === "bus" && transportChoice("departure")}
         {answers.departure === "own" && input("pickup",t.pickup,false)}
       </div></section>
       <section className="card"><h2>{t.permissions}</h2><div className="grid">
@@ -127,5 +138,5 @@ export function RegistrationForm({ locale, channel, id, weeks, selectedWeek }: {
       {status && <p className="notice" role="alert">{t[status]}</p>}
       <button disabled={busy}>{t.submit}</button>
     </>}
-  </form>;
+  </AppForm>;
 }

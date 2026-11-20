@@ -1,5 +1,6 @@
+import { getCampTransport,activeTransport,transportStopLabel } from "../../../../lib/camp-transport";
 import { getDatabase } from "../../../../lib/database";
-import { campBusStops, campPickupLabel, healthFields, noticeVersion } from "../../../../lib/registration";
+import { healthFields, noticeVersion } from "../../../../lib/registration";
 import { registrationCopy } from "../../../../lib/registration-copy";
 import { rosterCopy } from "../../../../lib/roster-copy";
 import { requireReview, ReviewFrame } from "../review-frame";
@@ -16,6 +17,7 @@ export default async function Printable({ params, searchParams }: {
     "SELECT id,name,starts_on::text AS start,ends_on::text AS end FROM camp_week ORDER BY starts_on NULLS LAST,id",
   )).rows;
   const week = weeks.find(item => String(item.id) === requested) ?? weeks[0];
+  const stops=week?activeTransport((await getCampTransport(db,week.id)).stops):[];
   const line = (label:string, required=false) => <div className="print-field">{label}{required ? " *" : ""}<div className="write-line" /></div>;
   const choices = (...labels:string[]) => <span>{labels.map(label => <span className="print-choice" key={label}>□ {label}</span>)}</span>;
 
@@ -47,8 +49,8 @@ export default async function Printable({ params, searchParams }: {
           {line(f.notes)}
         </div></section>
         <section><h2>{f.transport}</h2><div className="paper-grid">
-          <div>{f.arrival} *<br />{choices(f.bus,f.own)}</div><div>{f.arrivalStop} ({t.conditional})<br />{choices(...campBusStops.map(stop=>campPickupLabel(stop,locale)))}</div>
-          <div>{f.departure} *<br />{choices(f.bus,f.own)}</div><div>{f.departureStop} ({t.conditional})<br />{choices(...campBusStops.map(stop=>stop.name))}</div>
+          <div>{f.arrival} *<br />{choices(f.bus,f.own)}</div><div>{f.arrivalStop} ({t.conditional})<br />{choices(...stops.filter(stop=>stop.leg==="arrival").map(stop=>transportStopLabel(stop,locale)))}</div>
+          <div>{f.departure} *<br />{choices(f.bus,f.own)}</div><div>{f.departureStop} ({t.conditional})<br />{choices(...stops.filter(stop=>stop.leg==="departure").map(stop=>transportStopLabel(stop,locale)))}</div>
           {line(f.pickup)}
         </div></section>
         <section><h2>{f.permissions}</h2><div className="paper-grid">

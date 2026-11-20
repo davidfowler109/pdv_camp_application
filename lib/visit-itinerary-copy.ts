@@ -1,5 +1,6 @@
 export const visitItineraryCopy = {
   en:{
+    overview:"Current activity overview", overviewHelp:"All days in the working plan. Select an activity to open its day for editing. Saved changes appear here without publishing an estimate.", overviewTime:"Time", overviewLocation:"Location",
     title:"Itinerary & budget", setup:"Visit setup", roster:"Visitor roster", day:"Day", viewDay:"View day", activity:"Activity", addActivity:"Add activity",
     activityTitle:"Activity name", time:"Time, if known", location:"Location, if known", activityNotes:"Activity notes for the team, if any",
     saveActivity:"Save activity", copyActivity:"Copy activity and its costs", copyDay:"Copy this day's activities and costs", targetDay:"Copy to day",
@@ -33,6 +34,7 @@ export const visitItineraryCopy = {
     noteRequired:"Enter a reason to archive or restore this item.", history:"Recent planning changes (up to 30)", destination:"Destination day", noEstimate:"Publish a dated estimate when the plan is ready to share.",
   },
   es:{
+    overview:"Resumen actual de actividades", overviewHelp:"Todos los días del plan de trabajo. Selecciona una actividad para abrir su día y editarla. Los cambios guardados aparecen aquí sin publicar una estimación.", overviewTime:"Hora", overviewLocation:"Lugar",
     title:"Itinerario y presupuesto", setup:"Preparar visita", roster:"Lista de visitantes", day:"Día", viewDay:"Ver día", activity:"Actividad", addActivity:"Agregar actividad",
     activityTitle:"Nombre de la actividad", time:"Hora, si se conoce", location:"Lugar, si se conoce", activityNotes:"Notas de la actividad para el equipo, si corresponde",
     saveActivity:"Guardar actividad", copyActivity:"Copiar actividad y sus costos", copyDay:"Copiar las actividades y costos de este día", targetDay:"Copiar al día",

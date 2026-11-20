@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../app-form";
+
+
 import { startTransition, useActionState } from "react";
 import type { Locale } from "../../../lib/copy";
 import type { VisitorResult } from "../../../lib/church-visitors";
@@ -12,7 +15,7 @@ export function VisitorStatusForm({locale,visit,id,revision,withdrawn}: {
   const t = churchVisitorCopy[locale];
   const [result,dispatch,pending] = useActionState<VisitorResult,FormData>(updateVisitorStatus,null);
   if (result === "saved") return <p role="status">{t.saved}{" "}<a href={"/"+locale+"/church-visits/visitors?visit="+visit+"&visitor="+id}>{t.review}</a></p>;
-  return <form action={dispatch} onSubmit={event => {
+  return <AppForm busy={pending} action={dispatch} onSubmit={event => {
     event.preventDefault();
     if (pending) return;
     const data = new FormData(event.currentTarget);
@@ -26,5 +29,5 @@ export function VisitorStatusForm({locale,visit,id,revision,withdrawn}: {
     </div>
     {result && <p className="notice" role="alert">{t[result]}</p>}
     <button disabled={pending}>{withdrawn ? t.restore : t.withdraw}</button>
-  </form>;
+  </AppForm>;
 }

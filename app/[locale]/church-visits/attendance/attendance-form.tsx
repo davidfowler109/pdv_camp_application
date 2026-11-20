@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../../app-form";
+
+
 import { startTransition, useActionState, useState } from "react";
 import type { Locale } from "../../../../lib/copy";
 import { attendanceState, canRecordAttendance, type AttendanceOperation, type AttendancePerson, type AttendanceResult } from "../../../../lib/visit-attendance-state";
@@ -15,7 +18,7 @@ export function AttendanceForm({locale,visit,batch,people,filter,search,closed}:
   const [result,dispatch,pending] = useActionState<AttendanceResult|null,FormData>(submitAttendance,null);
   const eligible = people.filter(person => canRecordAttendance(person,operation));
   const correction = operation === "undoArrival" || operation === "undoDeparture";
-  return <form action={dispatch} onSubmit={event => {
+  return <AppForm busy={pending} action={dispatch} onSubmit={event => {
     event.preventDefault();
     if (pending) return;
     const data = new FormData(event.currentTarget);
@@ -55,5 +58,5 @@ export function AttendanceForm({locale,visit,batch,people,filter,search,closed}:
         <td>{person.arrived_at ?? "—"}</td><td>{person.departed_at ?? "—"}</td>
       </tr>)}</tbody>
     </table> : <p>{t.empty}</p>}</section>
-  </form>;
+  </AppForm>;
 }

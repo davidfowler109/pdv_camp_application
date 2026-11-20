@@ -1,3 +1,5 @@
+import { getCampTransport,activeTransport,type TransportStop } from "../../lib/camp-transport";
+import { AppForm } from "./app-form";
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import { getDatabase } from "../../lib/database";
@@ -18,9 +20,11 @@ export async function RegistrationScreen({ locale, requestedWeek, receipt }: { l
   if (!isLocale(locale)) notFound();
   const t = registrationCopy[locale];
   let weeks: RegistrationWeek[] = [];
+  let transportStops:TransportStop[]=[];
   if (!receipt && process.env.PDV_LOCAL_DEMO === "1") {
     try {
       const db = await getDatabase();
+      transportStops=(await getCampTransport(db)).stops;
       weeks = (await db.query<RegistrationWeek>(`SELECT id,name,starts_on::text AS start,ends_on::text AS end,fee_cents,early_bird_cents,early_bird_ends_on::text AS early_deadline
         FROM camp_week ORDER BY starts_on NULLS LAST,id`)).rows;
     } catch {}
@@ -33,17 +37,17 @@ export async function RegistrationScreen({ locale, requestedWeek, receipt }: { l
     const priceLabel = deadline && deadline >= today && week.early_bird_cents !== null
       ? payment.earlyDisplay(formatMoney(week.early_bird_cents,locale),dates.format(new Date(deadline+"T00:00:00Z")))
       : week.fee_cents !== null ? payment.regularDisplay(formatMoney(week.fee_cents,locale)) : payment.feePending;
-    return {id:week.id,label:campWeekLabel(week,locale),priceLabel};
+    return {id:week.id,label:campWeekLabel(week,locale),priceLabel,stops:activeTransport(transportStops,week.id)};
   });
   return <div className="public-registration">
     <PublicRegistrationHeader>
-      <form action={changeLanguage}>
+      <AppForm action={changeLanguage}>
         <input type="hidden" name="locale" value={locale === "es" ? "en" : "es"} />
         <input type="hidden" name="section" value="register" />
         {receipt && <input type="hidden" name="receipt" value={receipt} />}
         {selected && <input type="hidden" name="week" value={selected} />}
         <button lang={locale === "es" ? "en" : "es"}>{locale === "es" ? "English" : "Español"}</button>
-      </form>
+      </AppForm>
     </PublicRegistrationHeader>
     <main>
       <p className="registration-eyebrow">{t.pilot}</p>

@@ -1,5 +1,6 @@
 "use server";
 
+import { staffAvailability,staffRoleEligible,availabilityOverrideValid,recordAvailabilityOverrides } from "../../lib/staff-availability";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDatabase } from "../../lib/database";
@@ -19,7 +20,7 @@ function localeOf(form: FormData): Locale {
   return isLocale(locale) ? locale : "es";
 }
 
-function finish(form: FormData, status: "saved" | "invalid" | "denied" | "unavailable" | "groupConflict" | "facilityConflict"): never {
+function finish(form: FormData, status: "saved" | "invalid" | "denied" | "unavailable" | "groupConflict" | "facilityConflict" | "availabilityRequired"): never {
   const week = integer(form.get("week"), 1, 2147483647);
   redirect("/" + localeOf(form) + "?status=" + status + (week ? "&week=" + week : ""));
 }
@@ -47,7 +48,7 @@ export async function changeLanguage(form: FormData) {
   if (section === "church-visits/visitors" && /^[a-f0-9-]{36}$/i.test(visitor)) query.set("visitor",visitor);
   const from = string(form,"from");
   if (from) query.set("from",from.slice(0,500));
-  redirect("/" + locale + (/^(?:register|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
+  redirect("/" + locale + (/^(?:register|transport|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
 }
 
 export async function login(form: FormData) {
@@ -150,6 +151,11 @@ export async function saveDorm(form: FormData) {
       return (item.role === "guide" && !member.adult) ||
         (item.role !== member.previous_role && (!member.active || !member.skills.includes(item.role)));
     })) return false;
+    const availabilityMap=await staffAvailability(tx,week,ids);
+    if(staff.some(item=>team.find(person=>person.id===item.id)?.previous_role!==item.role&&!staffRoleEligible(availabilityMap.get(item.id),item.role,team.find(person=>person.id===item.id)!.adult)))return false;
+    const exceptions=staff.filter(item=>team.find(person=>person.id===item.id)?.previous_role!==item.role&&availabilityMap.get(item.id)?.state!=='available').map(item=>({availability:availabilityMap.get(item.id)!,role:item.role}));
+    const availabilityOverride={confirmed:form.has('overrideConfirmed'),reason:string(form,'overrideReason')};
+    if(exceptions.length&&!availabilityOverrideValid(availabilityOverride))return 'availabilityRequired' as const;
     if ((await tx.query("SELECT 1 FROM weekly_dorm_staff WHERE week_id=$1 AND dorm_id<>$2 AND staff_id=ANY($3::integer[]) LIMIT 1",[week,dorm,ids])).rows.length) return false;
     const guides = staff.filter(item => item.role === "guide").length;
     const counselors = staff.filter(item => item.role === "equipante").length;
@@ -172,9 +178,10 @@ export async function saveDorm(form: FormData) {
     );
     await tx.query("DELETE FROM weekly_dorm_staff WHERE week_id=$1 AND dorm_id=$2", [week,dorm]);
     await tx.query("INSERT INTO weekly_dorm_staff(week_id,dorm_id,staff_id,assignment_role) SELECT $1,$2,staff_id,role FROM unnest($3::integer[],$4::text[]) AS team(staff_id,role)", [week,dorm,ids,staff.map(item => item.role)]);
+    await recordAvailabilityOverrides(tx,week,exceptions,availabilityOverride,dorm);
     return true;
   });
-  finish(form, saved === "groupConflict" || saved === "facilityConflict" ? saved : saved ? "saved" : "invalid");
+  finish(form, saved === "availabilityRequired" ? saved : saved === "groupConflict" || saved === "facilityConflict" ? saved : saved ? "saved" : "invalid");
 }
 
 function housingResult(form: FormData, status: "saved"|"invalid"|"unavailable"|"facilityConflict"): never {

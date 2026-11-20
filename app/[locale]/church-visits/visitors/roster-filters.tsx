@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../../app-form";
+
+
 import type { Locale } from "../../../../lib/copy";
 import { churchVisitorCopy } from "../../../../lib/church-visitor-copy";
 
@@ -7,7 +10,7 @@ export function VisitorRosterFilters({locale,visit,search,role,status}: {
   locale:Locale;visit:string;search:string;role:string;status:string;
 }) {
   const t=churchVisitorCopy[locale];
-  return <form method="get">
+  return <AppForm method="get">
     <input name="visit" type="hidden" value={visit} />
     <div className="grid">
       <label><span>{t.search}</span><input name="q" maxLength={100} defaultValue={search} /></label>
@@ -23,5 +26,5 @@ export function VisitorRosterFilters({locale,visit,search,role,status}: {
       </select></label>
     </div>
     <button type="submit">{t.searchButton}</button>
-  </form>;
+  </AppForm>;
 }

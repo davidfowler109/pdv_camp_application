@@ -1,12 +1,4 @@
-export const campBusStops = [
-  {name:"Albrook",time:"7:30",en:"Dinosaur parking area",es:"Estacionamientos del Dinosaurio"},
-  {name:"Westland",time:"8:00",en:"Bus stop",es:"Parada de buses"},
-  {name:"La Espiga",time:"8:30",en:"Bus stop",es:"Parada de buses"},
-] as const;
-
-export function campPickupLabel(stop: typeof campBusStops[number], locale: "en"|"es") {
-  return stop.name+" · "+stop.time+" "+(locale === "es" ? "a. m." : "AM")+" · "+stop[locale];
-}
+import { activeTransport,transportSnapshot,transportVersion,type TransportStop } from "./camp-transport-options.ts";
 
 export const healthFields = ["food", "diet", "medicationAllergy", "medication", "accommodation"] as const;
 export type IntakeChannel = "online" | "paper" | "desk";
@@ -30,14 +22,15 @@ export function panamaDate() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Panama", dateStyle: "short" }).format();
 }
 
-export function parseRegistration(form: FormData, channel: IntakeChannel, today: string) {
+export function parseRegistration(form: FormData, channel: IntakeChannel, today: string, transportStops:TransportStop[] = []) {
   const read = (key: string) => {
     const value = form.get(key);
     return typeof value === "string" ? value.trim() : "";
   };
   const required = (keys: string[]) => keys.every(key => read(key).length > 0);
   const choice = (key: string, options: string[]) => options.includes(read(key));
-  const stopNames = campBusStops.map(stop => stop.name);
+  const available=activeTransport(transportStops,Number(read("week")));
+  const busStop=(leg:"arrival"|"departure")=>available.find(stop=>stop.id===read(leg+"Stop")&&stop.leg===leg&&transportVersion(stop)===read(leg+"StopVersion"));
   const photo = read("photoPermission");
   const authorizationDate = channel === "paper" ? read("authorizedOn") : today;
   const age = ageOn(read("birth"), authorizationDate);
@@ -52,8 +45,8 @@ export function parseRegistration(form: FormData, channel: IntakeChannel, today:
       (photo !== "granted" && photo !== "declined" && !(channel === "paper" && photo === "unrecorded")) ||
       !choice("participation", ["pending", "granted", "declined"]) ||
       !choice("arrival", ["bus", "own"]) || !choice("departure", ["bus", "own"]) ||
-      (read("arrival") === "bus" && !choice("arrivalStop", stopNames)) ||
-      (read("departure") === "bus" && !choice("departureStop", stopNames)) ||
+      (read("arrival") === "bus" && !busStop("arrival")) ||
+      (read("departure") === "bus" && !busStop("departure")) ||
       healthFields.some(key => !choice(key, ["none", "yes", "unknown"]) || (read(key) === "yes" && !required([key + "Details"])))) return null;
 
   const id = read("id");
@@ -72,7 +65,9 @@ export function parseRegistration(form: FormData, channel: IntakeChannel, today:
   if (read("helperRole") === "none") delete details.helper;
   for (const leg of ["arrival", "departure"]) if (read(leg) !== "bus") delete details[leg + "Stop"];
   for (const key of healthFields) if (read(key) !== "yes") delete details[key + "Details"];
-  const { first, last, signer, ...restrictedDetails } = details;
+  let plannedDetails=details;
+  for(const leg of ["arrival","departure"] as const)if(read(leg)==="bus")plannedDetails=transportSnapshot(plannedDetails,leg,busStop(leg)!);
+  const { first, last, signer, ...restrictedDetails } = plannedDetails;
   return {
     id, week, first, last, birth: read("birth"), group: read("group"), channel,
     participation: read("participation"), photoPermission: photo === "unrecorded" ? null : photo,

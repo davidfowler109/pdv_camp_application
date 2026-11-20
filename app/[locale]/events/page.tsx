@@ -1,5 +1,6 @@
+import { AppForm } from "../app-form";
 import { randomUUID } from "node:crypto";
-import Link from "next/link";
+import Link from "../app-link";
 import { eventHousingCopy } from "../../../lib/event-housing-copy";
 import { notFound, redirect } from "next/navigation";
 import { getDatabase } from "../../../lib/database";
@@ -87,10 +88,10 @@ export default async function Events({ params, searchParams }: {
           </fieldset>)}</div>
         </fieldset>
       </EventEditor>
-      {selected && <details><summary>{t.cancel}</summary><form action={saveEvent}>
+      {selected && <details><summary>{t.cancel}</summary><AppForm action={saveEvent}>
         <input name="locale" type="hidden" value={locale} /><input name="operation" type="hidden" value="cancel" />
         <input name="id" type="hidden" value={selected.id} /><button>{t.cancel}</button>
-      </form></details>}
+      </AppForm></details>}
     </section>}
   </ReviewFrame>;
 }

@@ -1,3 +1,4 @@
+import { AppForm } from "../app-form";
 import { notFound, redirect } from "next/navigation";
 import { copy, isLocale } from "../../../lib/copy";
 import { checkInCopy } from "../../../lib/check-in-copy";
@@ -61,13 +62,13 @@ export default async function Health({ params, searchParams }: {
     <header><div>
       <div className="brand"><img src="/palabra-de-vida.png" width={118} height={54} alt="Palabra de Vida Panamá" /><small>{c.pilot}</small></div>
       <div className="actions">
-        <form action={changeLanguage}>
+        <AppForm action={changeLanguage}>
           <input type="hidden" name="locale" value={locale === "en" ? "es" : "en"} />
           <input type="hidden" name="section" value="health" />
           {week && <input type="hidden" name="week" value={week.id} />}
           <button lang={locale === "en" ? "es" : "en"}>{c.switch}</button>
-        </form>
-        <form action={logout}><input type="hidden" name="locale" value={locale} /><button>{c.logout}</button></form>
+        </AppForm>
+        <AppForm action={logout}><input type="hidden" name="locale" value={locale} /><button>{c.logout}</button></AppForm>
       </div>
     </div></header>
     <main>

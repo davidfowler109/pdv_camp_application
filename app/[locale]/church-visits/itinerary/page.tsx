@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import Link from "next/link";
+import Link from "../../app-link";
 import { notFound,redirect } from "next/navigation";
 import { isLocale } from "../../../../lib/copy";
 import { currentRole } from "../../../../lib/session";
@@ -13,6 +13,7 @@ import { RegistrationLink } from "../registration-link";
 import { PlanForm,MealFields } from "./plan-form";
 import { BudgetSummary,CostTable } from "./budget-summary";
 import { DaySelector } from "./day-selector";
+import { DownloadPlanning } from "./download-planning";
 
 export default async function VisitItinerary({params,searchParams}: {
   params:Promise<{locale:string}>;searchParams:Promise<{visit?:string;day?:string;status?:string}>;
@@ -29,6 +30,7 @@ export default async function VisitItinerary({params,searchParams}: {
   const shortVisit=(Date.parse(plan.visit.end)-Date.parse(plan.visit.start))/86400000<=366;
   const days=shortVisit ? visitPlanDays(plan.visit.start,plan.visit.end) : [plan.visit.start,plan.visit.end];
   const active=plan.activities.filter(activity => !activity.archived_at);
+  const overviewDays=[...new Set([...days,...active.map(activity=>activity.day)])].sort();
   const outside=active.filter(activity => activity.day<plan.visit.start || activity.day>plan.visit.end);
   const [publications,history]=await Promise.all([
     db.query<{id:string;revision:number;version:number;date:string;withdrawn_at:string|null}>(`SELECT id,revision,version,withdrawn_at::text AS withdrawn_at,
@@ -82,9 +84,26 @@ export default async function VisitItinerary({params,searchParams}: {
   return <ReviewFrame locale={locale} section="church-visits/itinerary" title={t.title} visit={id} day={day}>
     <p><Link href={base+"?visit="+id}>{t.setup}</Link>{" · "}<Link href={base+"/visitors?visit="+id}>{t.roster}</Link></p>
     <h2>{plan.visit.name}</h2><p>{plan.visit.start} – {plan.visit.end}</p>
+    {!plan.visit.cancelled_at&&<DownloadPlanning visit={id} locale={locale}/>}
     {query.status==="saved" && <p className="notice" role="status">{t.saved}</p>}
     {plan.visit.cancelled_at && <p className="notice">{t.closed}</p>}
     {outside.length>0 && <section className="card notice"><p>{t.outsideDates}</p><ul>{outside.map(activity => <li key={activity.id}><Link href={dayUrl(activity.day)}>{activity.day} · {activity.title}</Link></li>)}</ul></section>}
+    <section className="card activity-overview"><details open><summary><strong>{t.overview}</strong></summary>
+      <p>{t.overviewHelp}</p>
+      <div className="roster-scroll" role="region" aria-label={t.overview} tabIndex={0}><table className="roster-table">
+        <thead><tr><th scope="col">{t.date}</th><th scope="col">{t.overviewTime}</th><th scope="col">{t.activity}</th><th scope="col">{t.overviewLocation}</th></tr></thead>
+        {overviewDays.map(value=>{
+          const activities=active.filter(activity=>activity.day===value);
+          const date=<><Link href={dayUrl(value)}><time dateTime={value}>{value}</time></Link>{(value<plan.visit.start||value>plan.visit.end)&&<div className="notice">{t.outsideLabel}</div>}</>;
+          return <tbody key={value}>{activities.length ? activities.map((activity,index)=><tr key={activity.id}>
+            {index===0&&<th scope="rowgroup" rowSpan={activities.length}>{date}</th>}
+            <td>{activity.time ? <time dateTime={activity.time}>{activity.time}</time> : "—"}</td>
+            <td><Link href={dayUrl(value)+"#activity-"+activity.id}>{activity.title}</Link>{activity.notes&&<div className="muted activity-overview-notes">{activity.notes}</div>}</td>
+            <td>{activity.location||"—"}</td>
+          </tr>) : <tr><th scope="row">{date}</th><td>—</td><td colSpan={2}>{t.noActivities}</td></tr>}</tbody>;
+        })}
+      </table></div>
+    </details></section>
     <details><summary>{t.summary}</summary><BudgetSummary locale={locale} budget={budget} countBasis={plan.settings.count_basis} extra={plan.settings.personal_extra_cents} shareGroupCosts={plan.settings.share_group_costs} /></details>
     {!plan.visit.cancelled_at && <section className="card"><details><summary>{t.settings}</summary>
       <PlanForm locale={locale} label={t.saveSettings}>{fields("settings")}<div className="grid">
@@ -98,7 +117,7 @@ export default async function VisitItinerary({params,searchParams}: {
         <details><summary>{t.copyDay}</summary><PlanForm locale={locale} label={t.copyDay}>{fields("copyDay")}<input name="sourceDay" type="hidden" value={day} />{targetDay}</PlanForm></details></>}
     </section>
     {active.filter(activity => activity.day===day).length===0 && <p>{t.noActivities}</p>}
-    {active.filter(activity => activity.day===day).map(activity => <section className="card" key={activity.id}>
+    {active.filter(activity => activity.day===day).map(activity => <section className="card" key={activity.id} id={"activity-"+activity.id}>
       <h2>{activity.time && activity.time+" · "}{activity.title}</h2><p>{activity.location}</p>{activity.notes && <p>{activity.notes}</p>}
       <CostTable locale={locale} lines={budget.lines.filter(line => line.activity_id===activity.id)} />
       {costControls(activity.id)}

@@ -1,5 +1,17 @@
 # Sensitive Decisions
 
+## PDV-004 — Staff applications, references and screening
+
+Application correction decision — Permit confirmed deletion of unused drafts and leadership cleanup of unused submissions, with uploaded files removed and only a minimal non-answer deletion receipt retained. Protect reference/review/staffing history; use withdrawal for those applications. Withdrawal preserves linked staff and cabin teams and flags leadership to review assignments separately. Removing a reviewed upload removes its bytes, invalidates that evidence review/readiness, and requires reassessment without silently disrupting existing supervision. Applicants cannot remove confidential reference files or staff-provided documents.
+
+Status — Agreed approach, implemented for fictional pilot; real-data screening, full questionnaires and staff-specific retention remain review prerequisites.
+
+Camp Leadership owns application decisions. Use a shorter application, private review, and separate preparation checklist. A pastor's recommendation and an official background check serve different purposes. Record source, reviewer and relevant decision; do not equate an upload or signature with verified suitability. Obtain appropriate safeguarding screening and signed full policies before marking a new applicant ready. Do not collect government ID numbers through the general application; confirm any specific need and restricted retention separately. Minors require guardian information authorization and reviewed parental participation permission. Keep references, health, background evidence and decision notes restricted. The applicant can see only their own answers, status and deliberately public clarification message. Application roles are independent of login permissions.
+
+The existing Add staff member capability remains. Application approval creates inactive staff or explicitly links an existing person without disrupting established assignments. New application roles become assignable after readiness review. Production must attribute decisions to individual authenticated staff rather than the current shared demo role. Expiring bearer links provide save-and-return and a distinct confidential pastor response; protect link delivery and redact secrets from hosting logs before real use. See [Staff applications](staff-applications-spec.md).
+
+Review triggers — Receipt of the complete Cabin Leader/Volunteer questionnaires; introduction of real applicant data, automated reference email, production storage, screening-provider integration, or jurisdiction-specific requirements.
+
 This register records policy, rationale, and review triggers. Keep camper records and signed forms in restricted camp records.
 
 ## PDV-001 — Who can authorize registration and how the camp verifies it
@@ -69,7 +81,55 @@ Specification — [Church visits](church-visits-spec.md)
 - Use an unpredictable link for each publication. Include aggregate planning data and team activity notes. Exclude individual visitor records, leader contact details, staff recorder identities, and private change notes.
 - Preserve published figures while staff edit the working plan. Record publication, link withdrawal, and link restoration in the planning history. A withdrawn link is available for staff review and is unavailable to public viewers.
 - Label incomplete prices and allowance assumptions. Suggested traveler contributions support the church's planning and collection process. The church remains the payer for camp charges.
+- Planning Excel downloads use expected attendance only and exclude visitor records, registered counts, contact and health details, staff identities, private change notes, and activity notes. Camp Leadership downloads the working estimate to share with the church leader. The editable spreadsheet can include additional church-managed trip costs; edits remain in that file and do not update camp records.
 
 ### Review triggers
 
 Review before adding personal visitor information, named rooming lists, sensitive ministry details, or authenticated leader editing to the shared estimate.
+
+
+## PDV-004 — Volunteer screening and explicit acknowledgments
+
+Status — Agreed November 17, 2026; implemented in the pilot.
+
+Policy owner — Camp Leadership.
+
+Specification — [Staff applications](staff-applications-spec.md).
+
+Use precise adult safeguarding questions instead of broad questions about ever being arrested, sued or having any problem with the law. Yes requires an explanation or a private leadership conversation request; it does not cause automatic rejection. Under-18 applicants use age-appropriate review. Restrict screening information and internal decisions to leadership and the applicant's own private record as applicable; references and leadership notes remain confidential.
+
+Record three separate explicit acknowledgments with exact text, language, versions and time. These do not create a universal signed-policy upload requirement. Leadership identifies any additional reference, background certificate, full signed policy or training requirement explicitly for the applicant. A reference may be direct online or signed paper. Guardian participation permission applies only to minors. Readiness requires a recorded screening review; changing answers invalidates that review.
+
+This is an application workflow decision, not a determination of Panama's legal screening obligations. Review before production: the camp's approved screening procedure, policy text, individual reviewer attribution, private document handling and staff-specific retention. Revisit if roles, age eligibility or applicable requirements change.
+
+
+## PDV-005 — Staff availability exceptions
+
+Status — Agreed and implemented November 17, 2026. Policy owner — Camp Leadership.
+
+Staff application week selections declare availability. Normal weekly and cabin assignments use recorded availability. Missing availability does not mean available all season. Camp Leadership may assign outside recorded availability only after confirming the person can serve and recording a reason. Keep that exception separate from changing the person’s seasonal plan; retain the original application answers.
+
+Preserve existing assignments and flag mismatches for review. An availability exception cannot waive qualifications, active status for new assignments, actual-week role age requirements where known, required cabin leadership or capacity rules. Record the availability snapshot, person, week, role, cabin if applicable, reason and accountable leadership recorder. Production requires individual authenticated recorder attribution. See [Staff applications](staff-applications-spec.md).
+
+
+## PDV-006 — Equipante preparation matches age and duties
+
+Status — Agreed and implemented November 17, 2026. Policy owner — Camp Leadership.
+
+Equipantes are counselors/senior campers, not the cabins’ required adult supervision. Do not assume that an official background certificate, formal child-protection course or separately signed full policy is required for every Equipante. Routine preparation records age-appropriate review, camp orientation and acknowledgment of the actual identified camp rules. Additional certificates, training or signed policies require an explicit camp decision; guardian permission remains applicable to minors. Preserve the required two adult Cabin Leaders for camper cabins.
+
+Record which rules the applicant acknowledged and retain the dated evidence. Updated rules need a new acknowledgment and leadership review. The checklist does not establish Panama legal requirements; the camp must approve its procedure and actual policy documents before production. See [Staff applications](staff-applications-spec.md).
+
+
+## PDV-007 — Elective camp rules acknowledgment
+
+Status — Agreed and implemented November 18, 2026. Policy owner — Camp Leadership. Revises the rules portion of PDV-006.
+
+Camp Counselor rules acknowledgment is required only when the reviewer explicitly elects it. Election requires a title, revision and readable HTTPS link or camp-uploaded PDF. The applicant acknowledges the exact identified document; the system records date and evidence and reports completion automatically. Remove the redundant leadership acknowledgment checkbox. A separate signed policy remains a distinct elective requirement. New document identities require new acknowledgments. Existing applicants are not silently opted in by legacy fields. Scope and private document authorization are documented in [Staff applications](staff-applications-spec.md).
+
+
+## PDV-008 — Shared questions for adult Cabin Leader applicants
+
+Status — Agreed and implemented November 19, 2026. Policy owner — Camp Leadership.
+
+Collect the same focused adult screening questions and approximate whole believer-years for Cabin Leaders as for adult Volunteers. No defaults, belief-duration cutoff, automatic rejection or government ID fields. Yes permits a brief explanation or a private leadership conversation. Keep the applicant’s declarations distinct from independently reviewed background screening and confidential references. Restrict internal reviews to leadership, require explicit review before readiness, and invalidate that review when screening answers materially change. Existing Ready staff and assignments remain unchanged. See [Staff applications](staff-applications-spec.md).

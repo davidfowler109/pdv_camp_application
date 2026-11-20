@@ -1,5 +1,8 @@
+import { getCampTransport,transportNeedsReview,savedTransportLabel } from "../../../../lib/camp-transport";
+import { campTransportCopy } from "../../../../lib/camp-transport-copy";
+import { AppForm } from "../../app-form";
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "../../app-link";
 import { notFound } from "next/navigation";
 import { getDatabase } from "../../../../lib/database";
 import { confirmedCount, finance } from "../../../../lib/review";
@@ -26,7 +29,7 @@ export default async function Page({ params, searchParams }: {
   params: Promise<{ locale:string; id:string }>; searchParams: Promise<{ status?:string; from?:string }>;
 }) {
   const route = await params;
-  const { locale } = await requireReview(route.locale);
+  const { locale,role } = await requireReview(route.locale);
   if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(route.id)) notFound();
   const { status, from } = await searchParams;
   const backQuery = typeof from === "string" ? new URLSearchParams(from.slice(0,500)).toString() : undefined;
@@ -51,18 +54,20 @@ export default async function Page({ params, searchParams }: {
       "SELECT id,uploaded_at FROM registration_signed_form WHERE registration_id=$1 ORDER BY uploaded_at,id",[r.id],
     ).then(result=>result.rows) : [],
   ]);
+  const transport=(await getCampTransport(db,r.week_id)).stops;
+  const transit=campTransportCopy[locale];
   const money = (cents:number) => formatMoney(cents,locale);
   const balance = r.fee_cents === null ? null : Math.max(0,r.fee_cents - funds.paid - funds.award);
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle:"medium", timeStyle:"short", timeZone:"America/Panama" });
   const display = (value:string|undefined) => value || "—";
   function form(operation:string, label:string, content:ReactNode) {
-    return <form action={reviewRegistration}>
+    return <AppForm action={reviewRegistration}>
       <input type="hidden" name="locale" value={locale} /><input type="hidden" name="id" value={r.id} />
       <input type="hidden" name="operation" value={operation} />
       {backQuery && <input type="hidden" name="from" value={backQuery} />}
       <div className="grid">{content}<label>{t.actor}<input name="actor" required maxLength={100} /></label></div>
       <button>{label}</button>
-    </form>;
+    </AppForm>;
   }
 
   return <ReviewFrame locale={locale} week={r.week_id} backQuery={backQuery} section={"intake/"+r.id} status={status} title={t.title}>
@@ -71,6 +76,8 @@ export default async function Page({ params, searchParams }: {
       <div className="grid"><strong>{t.place}: {t[r.place_status]}</strong><strong>{t.permission}: {t[r.participation]}</strong>
         <strong>{t.balance}: {balance === null ? t.noFee : money(balance)}</strong></div>
     </section>
+    <section className="card"><h2>{transit.title}</h2>{(["arrival","departure"] as const).map(leg=><p key={leg}>{transit[leg]}: {r.details[leg]==="own"?transit.own:savedTransportLabel(r.details,leg,locale)||"—"}{transportNeedsReview(r.details,leg,transport)&&<span className="badge warn">{transit.changed}</span>}</p>)}{role==="leadership"&&<Link href={"/"+locale+"/transport?week="+r.week_id+"#review"}>{transit.review}</Link>}</section>
+
     <section className="card"><details><summary>{t.authorization}</summary>
       <p>{r.signer_name} · {r.authorized} · {r.notice_version}</p>
       <p>{registration.photoPermission} · {r.photo_permission === "granted" ? registration.yes : r.photo_permission === "declined" ? registration.no : registration.photoUnknown}</p>

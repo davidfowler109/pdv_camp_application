@@ -1,5 +1,8 @@
+import { getCampTransport,activeTransport,transportStopLabel,transportNeedsReview,savedTransportLabel } from "../../../lib/camp-transport";
+import { campTransportCopy } from "../../../lib/camp-transport-copy";
+import { AppForm } from "../app-form";
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "../app-link";
 import { campWeekLabel, listCampWeeks } from "../../../lib/camp-week";
 import { getDatabase } from "../../../lib/database";
 import { departureCopy } from "../../../lib/departure-copy";
@@ -12,7 +15,7 @@ import { BusDeparture, type BusCandidate } from "./bus-departure";
 
 type Status = "waiting"|"boarded"|"awaiting"|"complete";
 type Row = {
-  id:string; camper:string; birth:string; planned:string|null; stop:string|null; expected_pickup:string|null;
+  id:string; camper:string; birth:string; details:Record<string,string>; planned:string|null; stop:string|null; expected_pickup:string|null;
   method:"bus"|"pickup"|"home"|"self"|null; bus:string|null; pickup_name:string|null; handoff_note:string|null;
   recorded_at:Date|null; version:string|null; departed_at:Date|null; handoff_at:Date|null; state:Status;
 };
@@ -35,11 +38,14 @@ export default async function Departure({ params, searchParams }: {
   if (search) state.set("q",search);
   if (open) state.set("open","yes");
 
+  const transport=week?await getCampTransport(db,week.id):{routes:[],stops:[]};
+  const vehicles=[...new Set(transport.routes.filter(r=>r.active).map(r=>r.vehicle))];
+  const configuredStops=activeTransport(transport.stops).filter(s=>s.leg==="departure").map(s=>({value:s.id,label:transportStopLabel(s,locale)}));
   const [rows,buses,candidates] = week ? await Promise.all([
     db.query<Row>(
       `WITH departures AS (
         SELECT r.id,r.first_name || ' ' || r.last_name AS camper,r.date_of_birth::text AS birth,r.last_name,r.first_name,
-          r.details->>'departure' AS planned,r.details->>'departureStop' AS stop,r.details->>'pickup' AS expected_pickup,
+          r.details,r.details->>'departure' AS planned,r.details->>'departureStop' AS stop,r.details->>'pickup' AS expected_pickup,
           d.method,b.name AS bus,d.pickup_name,d.handoff_note,d.recorded_at,d.recorded_at::text AS version,b.departed_at,d.handoff_at,
           CASE WHEN d.method IS NULL THEN 'waiting' WHEN d.method='bus' AND b.departed_at IS NULL THEN 'boarded'
                WHEN d.method='bus' AND d.handoff_required AND d.handoff_at IS NULL THEN 'awaiting' ELSE 'complete' END AS state
@@ -56,7 +62,7 @@ export default async function Departure({ params, searchParams }: {
        FROM return_bus b WHERE b.week_id=$1 ORDER BY (b.departed_at IS NOT NULL),b.name,b.bus_key`,[week.id],
     ).then(result => result.rows),
     db.query<BusCandidate>(
-      `SELECT r.id,r.first_name || ' ' || r.last_name AS camper,r.details->>'departureStop' AS stop,
+      `SELECT r.id,r.first_name || ' ' || r.last_name AS camper,r.details->>'departureStop' AS stop,r.details,
          d.bus_key,d.recorded_at::text AS version,COALESCE(d.handoff_required,false) AS handoff_required
        FROM registration r JOIN camper_arrival a ON a.registration_id=r.id AND a.voided_at IS NULL
        LEFT JOIN camper_departure d ON d.registration_id=r.id
@@ -66,6 +72,7 @@ export default async function Departure({ params, searchParams }: {
        ORDER BY lower(r.last_name),lower(r.first_name),r.id`,[week.id],
     ).then(result => result.rows),
   ]) : [[],[],[]];
+  for(const candidate of candidates){const details=candidate.details??{};candidate.stop_key=details.departureStopId??candidate.stop??"";candidate.stop_label=savedTransportLabel(details,"departure",locale)||candidate.stop||"";candidate.transport_review=transportNeedsReview(details,"departure",transport.stops);}
   const row = rows.find(item => item.id === camper);
   const reopensDeparture = role === "leadership" && row?.state === "waiting" && (await db.query(
     "SELECT 1 FROM camper_operation_correction WHERE registration_id=$1 AND operation='correctDeparture' LIMIT 1",[row.id],
@@ -83,13 +90,13 @@ export default async function Departure({ params, searchParams }: {
   const note = <label>{t.notes}<input name="note" maxLength={500} /></label>;
   const recipient = <label>{t.recipient}<input name="recipient" required maxLength={150} /></label>;
   function form(operation:string, label:string, content:ReactNode, camperId?:string) {
-    return <form action={saveDeparture}>
+    return <AppForm action={saveDeparture}>
       <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week?.id} />
       <input type="hidden" name="operation" value={operation} />
       {camperId && <input type="hidden" name="camper" value={camperId} />}
       <input type="hidden" name="q" value={search} />{open && <input type="hidden" name="open" value="yes" />}
       {content}<button>{label}</button>
-    </form>;
+    </AppForm>;
   }
   function actual(item:Row) {
     if (item.method === "bus") return item.bus;
@@ -119,7 +126,7 @@ export default async function Departure({ params, searchParams }: {
             {form("board",t.recordBoarding,<><div className="grid">
               <label>{t.busName}<input name="bus" list="return-bus-names" maxLength={100} required /></label>{actor}
             </div><small>{t.choose}</small>
-              <datalist id="return-bus-names">{buses.filter(bus => reopensDeparture || !bus.departed_at).map(bus => <option key={bus.name} value={bus.name} />)}</datalist>
+              <datalist id="return-bus-names">{[...new Set([...vehicles,...buses.filter(bus=>reopensDeparture||!bus.departed_at).map(bus=>bus.name)])].map(name=><option key={name} value={name}/>)}</datalist>
               <label className="check"><input type="checkbox" name="handoffRequired" />{t.handoffNeeded}</label>
             </>,row.id)}
           </details>
@@ -150,7 +157,7 @@ export default async function Departure({ params, searchParams }: {
       </section>}
       <section className="card"><h2>{t.buses}</h2>
         {candidates.length > 0 && <BusDeparture key={week.id} locale={locale} week={week.id} candidates={candidates}
-          buses={buses.map(bus => ({key:bus.bus_key,name:bus.name,departed:bus.departed_at !== null}))} search={search} open={open} />}
+          configuredVehicles={vehicles} configuredStops={configuredStops} buses={buses.map(bus => ({key:bus.bus_key,name:bus.name,departed:bus.departed_at !== null}))} search={search} open={open} />}
         {buses.length ? <div className="dorms">{buses.map(bus => <article className="card" key={bus.name}>
           <h3>{bus.name} · {bus.boarded}</h3><p>{bus.departed_at ? t.busDeparted+" · "+dateText(bus.departed_at) : t.atCamp}</p>
           {!bus.departed_at && form("departBus",t.departBus,<><input type="hidden" name="bus" value={bus.name} />{actor}</>)}
@@ -161,7 +168,7 @@ export default async function Departure({ params, searchParams }: {
           <thead><tr><th scope="col">{t.camper}</th><th scope="col">{t.planned}</th><th scope="col">{t.status}</th><th scope="col">{t.actual}</th></tr></thead>
           <tbody>{visibleRows.map(item => <tr key={item.id}>
             <th scope="row"><Link href={base+"?"+new URLSearchParams([...state,["camper",item.id]])}>{item.camper}</Link></th>
-            <td>{item.planned === "bus" ? item.stop ?? t.bus : item.planned === "own" ? t.own : "—"}</td>
+            <td>{item.planned === "bus" ? savedTransportLabel(item.details,"departure",locale) || t.bus : item.planned === "own" ? t.own : "—"}{transportNeedsReview(item.details,"departure",transport.stops)&&<div className="badge warn">{campTransportCopy[locale].changed}</div>}</td>
             <td><span className={item.state === "complete" ? "badge" : "badge warn"}>{t[item.state]}</span></td><td>{actual(item)}</td>
           </tr>)}</tbody>
         </table></div> : <p>{hasArrivals ? t.none : t.noArrivals}</p>}

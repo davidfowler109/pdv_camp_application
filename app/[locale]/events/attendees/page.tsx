@@ -1,5 +1,6 @@
+import { AppForm } from "../../app-form";
 import { randomUUID } from "node:crypto";
-import Link from "next/link";
+import Link from "../../app-link";
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "../../../../lib/copy";
 import { getDatabase } from "../../../../lib/database";
@@ -125,27 +126,27 @@ export default async function Attendees({params,searchParams}:{
       </dl>
       {!event.cancelled && <>
         {selected.place_status !== "confirmed" && (selected.attendance === "day" ? event.day_attendance : event.overnight_attendance) &&
-          <form action={reviewAttendee}>{actionFields("confirm")}<button>{t.confirm}</button></form>}
-        {selected.place_status !== "released" && <details><summary>{t.release}</summary><form action={reviewAttendee}>{actionFields("release")}
+          <AppForm action={reviewAttendee}>{actionFields("confirm")}<button>{t.confirm}</button></AppForm>}
+        {selected.place_status !== "released" && <details><summary>{t.release}</summary><AppForm action={reviewAttendee}>{actionFields("release")}
           <div className="grid"><label><span>{h.actor} *</span><input name="actor" maxLength={160} required /></label>
             <label><span>{h.reason} *</span><input name="reason" maxLength={1000} required /></label></div>
-          <button>{t.release}</button></form></details>}
+          <button>{t.release}</button></AppForm></details>}
         <details><summary>{t.payment}</summary>
-          <form action={reviewAttendee}>{actionFields("payment")}
+          <AppForm action={reviewAttendee}>{actionFields("payment")}
             <div className="grid">
               <label>{t.amount}<input name="amount" inputMode="decimal" required /></label>
               <label>{t.reference}<input name="reference" maxLength={150} required /></label>
               <label>{t.actor}<input name="actor" maxLength={100} required /></label>
             </div><button>{t.payment}</button>
-          </form>
+          </AppForm>
         </details>
       </>}
     </section>}
-    <form action={roster}>
+    <AppForm action={roster}>
       <input type="hidden" name="event" value={eventId} />
       <label>{t.search}<input type="search" name="q" maxLength={100} defaultValue={search} /></label>
       <button>{t.apply}</button>
-    </form>
+    </AppForm>
     {result.rows.length ? <section className="card roster-scroll">
       <table className="roster-table">
         <thead><tr><th scope="col">{t.attendee}</th><th scope="col">{t.attendance}</th><th scope="col">{t.place}</th>

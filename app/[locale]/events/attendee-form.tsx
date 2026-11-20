@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../app-form";
+
+
 import { startTransition,useActionState,useState } from "react";
 import type { Locale } from "../../../lib/copy";
 import { eventNoticeVersion,type EventSource } from "../../../lib/event-registration";
@@ -26,7 +29,7 @@ export function AttendeeForm({locale,event,id,source,day,overnight}:{
   if (result==="received") return <section className="card"><p role="status">{t.received}</p>
     {source!=="online" && <a href={"/"+locale+"/events/attendees?event="+event+"&entry="+source}>{t.another}</a>}
   </section>;
-  return <form action={dispatch} className="registration-form" onSubmit={event=>{
+  return <AppForm busy={pending} action={dispatch} className="registration-form" onSubmit={event=>{
     event.preventDefault();
     if (pending) return;
     const form=new FormData(event.currentTarget);
@@ -57,5 +60,5 @@ export function AttendeeForm({locale,event,id,source,day,overnight}:{
       {result && <p className="notice" role="alert">{t[result]}</p>}
       <button disabled={pending}>{t.submit}</button>
     </section>}
-  </form>;
+  </AppForm>;
 }

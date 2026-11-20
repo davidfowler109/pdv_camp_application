@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { AppForm } from "../app-form";
+import Link from "../app-link";
 import { campPaymentCopy } from "../../../lib/camp-payment-copy";
 import { copy } from "../../../lib/copy";
 import { campWeekLabel, listCampWeeks } from "../../../lib/camp-week";
@@ -94,7 +95,7 @@ export default async function Intake({ params, searchParams }: {
           {followups && <Link className="action-link secondary" href={base+"?week="+week.id}>{r.allApplications}</Link>}
         </div>
       </section>
-      <form method="get" className="roster-filters">
+      <AppForm method="get" className="roster-filters">
         {followups && <input type="hidden" name="followups" value={followups} />}
         <div className="grid">
           <RegistrationWeekFilter label={f.week} selected={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} />
@@ -110,7 +111,7 @@ export default async function Intake({ params, searchParams }: {
           </div>
         </details>
         <button>{t.apply}</button>
-      </form>
+      </AppForm>
       {rows.length ? <>
         <div className="roster-scroll"><table className="roster-table">
           <thead><tr><th scope="col">{t.camper}</th><th scope="col">{r.place}</th><th scope="col">{r.permission}</th>

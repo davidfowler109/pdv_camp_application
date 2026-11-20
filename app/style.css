@@ -19,6 +19,26 @@
 .card{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}.dorms{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,325px),1fr));gap:12px}
 a{color:var(--action)}input:is([type=checkbox],[type=radio]){accent-color:var(--action)}label{display:grid;gap:4px;min-width:0}input,select,button{font:inherit;min-height:42px;border:1px solid var(--control-border);border-radius:7px;padding:7px 9px;min-width:0}input:is([type=checkbox],[type=radio]){min-height:auto;width:18px;height:18px}button{background:var(--action);color:white;margin-top:10px}header button{background:var(--brand-teal);border-color:var(--line);margin-top:0}.check{display:flex;align-items:center;gap:6px;margin:8px 0}fieldset{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:6px 12px}.badge{display:inline-block;background:var(--tint);border-radius:18px;padding:3px 9px;margin:4px 0}.warn{background:#faebcb}.muted{color:var(--muted)}.notice{padding:10px;background:var(--tint);border-radius:8px}.actions{display:flex;gap:8px;flex-wrap:wrap}details summary{margin:7px 0;cursor:pointer}output{display:block}
 
+/* Use the same pointer for enabled actions throughout public and staff screens. */
+:is(a[href], button, select, summary, [role="button"], input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"])):not(:disabled):not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+label:has(> input:is([type="checkbox"], [type="radio"]):enabled) { cursor: pointer; }
+:is(button, input, select, textarea):disabled, [aria-disabled="true"], label:has(> input:is([type="checkbox"], [type="radio"]):disabled) {
+  cursor: not-allowed;
+}
+input[type="file"]::file-selector-button { cursor: inherit; }
+.pending-fieldset { display: contents; padding: 0; margin: 0; border: 0; min-width: 0; }
+html[data-app-busy="true"], html[data-app-busy="true"] * { cursor: progress !important; }
+html[data-app-busy="true"] :is(button, input, select, textarea):disabled,
+html[data-app-busy="true"] [aria-disabled="true"],
+html[data-app-busy="true"] label:has(> input:is([type="checkbox"], [type="radio"]):disabled) { cursor: not-allowed !important; }
+.pending-notice { position: fixed; bottom: 18px; right: 18px; z-index: 1000; display: flex; align-items: center; gap: 9px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); box-shadow: 0 3px 14px #22344726; }
+.pending-notice[hidden] { display: none; }
+.pending-spinner { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--brand-teal); border-radius: 50%; animation: pending-spin .8s linear infinite; }
+@keyframes pending-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pending-spinner { animation: none; } }
+
 .registration-form .grid { align-items: start; }
 .registration-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
 .registration-form select {
@@ -75,6 +95,17 @@ label[hidden] { display: none; }
 .roster-table th, .roster-table td { border-bottom: 1px solid var(--line); padding: 10px 12px; vertical-align: top; }
 .roster-table thead { background: var(--tint); }
 .roster-table .money { text-align: right; white-space: nowrap; }
+.activity-overview .roster-scroll { max-height: 26rem; overflow: auto; }
+.activity-overview thead { position: sticky; top: 0; z-index: 1; }
+.activity-overview-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.staff-answer { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 14px; }
+.staff-save-status { min-height: 1.6em; margin: 10px 0; color: var(--muted); font-size: .9rem; }
+.staff-confirmation h2 { scroll-margin-top: 20px; }
+@media print {
+  .staff-reference-print .no-print { display: none; }
+  .staff-reference-print label { break-inside: avoid; }
+  .staff-reference-print textarea { min-height: 80px; }
+}
 .follow-up-reason { overflow-wrap: anywhere; }
 .scholarship-instructions { white-space: pre-wrap; overflow-wrap: anywhere; }
 .roster-pages { align-items: center; justify-content: flex-end; margin-top: 14px; }

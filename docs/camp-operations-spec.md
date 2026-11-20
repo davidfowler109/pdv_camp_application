@@ -24,6 +24,8 @@
 
 ## 2. Check in and assign
 
+Transportation setup — Configure each week's camp buses, routes, pickup and return drop-off stops, local times, and meeting instructions on the separate Transportation setup page linked from Week setup. Copy active arrangements from another week as independent records. Registration, printable forms, check-in, and departure use these weekly options while retaining Own transportation and actual-travel exceptions. Preserve registered plans when configuration changes and flag affected journeys for staff review. See the [Camp transportation specification](camp-transport-spec.md).
+
 - Use the [team walkthrough](pilot-walkthrough.html) as the arrival screen baseline. Camp Registration opens the expected bus roster and can look up campers across the week. Record actual arrival and bus, where applicable. Route unmatched arrivals to Camp Registration for follow-up.
 - Show participation permission and outstanding balance at a glance. Camp Registration can record presence while permission is pending. A designated adult supervises the camper until the authorized signer gives permission. An outstanding balance is tracked separately.
 - Suggest a dorm using age, gender, remaining beds, and required coverage. Show the Cabin Leaders and Camp Counselors. Camp Registration can change the suggested placement and records the reason. Enforce usable bed capacity and required coverage. When there is no suitable dorm, keep the camper visibly unassigned for staff follow-up.
@@ -52,3 +54,5 @@
 - Confirm who can configure weekly housing and who records destination handoffs on each route.
 
 Check-in roster controls — Changing Camp week or Expected arrival immediately submits the current filters. Keep Apply filters for name searches and manual submission. Changing menus refreshes the expected stop options and roster for the selected week without recording an arrival.
+
+Staff availability — Weekly roles and new cabin team assignments use confirmed seasonal availability or the latest ready application for that person/season. Default choices include available qualified active staff. Leadership may explicitly confirm an exception with a recorded reason; server checks and cabin safety requirements remain enforced. Preserve and flag existing mismatches. Direct-entry staff availability is recorded from the Staff directory. See [Staff applications](staff-applications-spec.md).

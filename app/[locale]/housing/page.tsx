@@ -1,3 +1,4 @@
+import { AppForm } from "../app-form";
 import { getDatabase } from "../../../lib/database";
 import { facilitiesCopy } from "../../../lib/facilities-copy";
 import { copy, type Locale } from "../../../lib/copy";
@@ -13,7 +14,7 @@ type Room = {
 
 function RoomForm({ locale, room }: { locale:Locale; room?:Room }) {
   const t = copy[locale], h = housingCopy[locale];
-  return <form action={saveRoom}>
+  return <AppForm action={saveRoom}>
     <input name="locale" type="hidden" value={locale} />
     {room && <><input name="dorm" type="hidden" value={room.id} /><input name="kind" type="hidden" value={room.room_kind} /></>}
     <div className="grid">
@@ -25,7 +26,7 @@ function RoomForm({ locale, room }: { locale:Locale; room?:Room }) {
     </div>
     <label className="check"><input name="active" type="checkbox" defaultChecked={room?.active ?? true} />{t.active}</label>
     <button>{t.saveDorm}</button>
-  </form>;
+  </AppForm>;
 }
 
 export default async function Page({ params, searchParams }: {
@@ -45,13 +46,13 @@ export default async function Page({ params, searchParams }: {
   return <>
     <header><div><div className="brand"><img src="/palabra-de-vida.png" width={118} height={54} alt="Palabra de Vida Panamá" /><small>{t.pilot}</small></div>
       <div className="actions">
-        <form action={changeLanguage}>
+        <AppForm action={changeLanguage}>
           <input name="locale" type="hidden" value={locale === "en" ? "es" : "en"} />
           <input name="section" type="hidden" value="housing" />
           {selectedWeek && <input name="week" type="hidden" value={selectedWeek} />}
           <button lang={locale === "en" ? "es" : "en"}>{t.switch}</button>
-        </form>
-        <form action={logout}><input type="hidden" name="locale" value={locale} /><button>{t.logout}</button></form>
+        </AppForm>
+        <AppForm action={logout}><input type="hidden" name="locale" value={locale} /><button>{t.logout}</button></AppForm>
       </div>
     </div></header>
     <main>
@@ -69,12 +70,12 @@ export default async function Page({ params, searchParams }: {
           <p>{t.beds}: {room.physical_beds} · {h.defaultBeds}: {room.default_beds}</p>
           <p><span className={room.needs_cleaning ? "badge warn" : "badge"}>{room.needs_cleaning ? h.cleaning : h.roomReady}</span></p>
           {role === "leadership" && <>
-            <form action={saveReadiness}>
+            <AppForm action={saveReadiness}>
               <input name="locale" type="hidden" value={locale} /><input name="dorm" type="hidden" value={room.id} />
               <label>{h.readiness}<select name="readiness" defaultValue={room.needs_cleaning ? "cleaning" : "ready"}>
                 <option value="ready">{h.roomReady}</option><option value="cleaning">{h.cleaning}</option>
               </select></label><button>{h.changeReadiness}</button>
-            </form>
+            </AppForm>
             <details><summary>{h.editRoom}</summary><RoomForm locale={locale} room={room} /></details>
           </>}
         </article>)}</div>

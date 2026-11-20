@@ -1,6 +1,11 @@
+import type { TransportStop } from "../lib/camp-transport-options.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ageOn, parseRegistration } from "../lib/registration.ts";
+import { ageOn, parseRegistration as parseConfiguredRegistration } from "../lib/registration.ts";
+
+
+const transportStops:TransportStop[]=[{id:"11111111-1111-4111-8111-111111111111",week_id:1,route_id:"33333333-3333-4333-8333-333333333333",leg:"arrival",location:"Albrook",time:"07:30",notes:"",active:true,revision:1,route:"Sample route",vehicle:"Bus 1",route_active:true,route_revision:1},{id:"22222222-2222-4222-8222-222222222222",week_id:1,route_id:"33333333-3333-4333-8333-333333333333",leg:"departure",location:"La Espiga",time:"15:30",notes:"",active:true,revision:1,route:"Sample route",vehicle:"Bus 1",route_active:true,route_revision:1}];
+const parseRegistration=(form:FormData,channel:"online"|"desk"|"paper",today:string)=>parseConfiguredRegistration(form,channel,today,transportStops);
 
 const today = "2026-11-06";
 function registration() {
@@ -10,7 +15,7 @@ function registration() {
     signer:"Laura", signerRelationship:"Mother", first:"Isabel", last:"Mora", birth:"2014-06-04", group:"female",
     home:"Last house past the church", contact:"Laura", relationship:"Mother", contactRoute:"Through the pastor",
     helperRole:"pastor", helper:"Mateo", food:"none", diet:"none", medicationAllergy:"unknown", medication:"none", accommodation:"none",
-    arrival:"bus", arrivalStop:"Albrook", departure:"own", participation:"pending", photoPermission:"declined",
+    arrival:"bus", arrivalStop:"11111111-1111-4111-8111-111111111111", arrivalStopVersion:"1:1", departureStopVersion:"1:1", departure:"own", participation:"pending", photoPermission:"declined",
   })) form.set(key, value);
   return form;
 }
@@ -37,6 +42,15 @@ test("data consent is explicit while participation may remain pending", () => {
   assert.equal(item?.details.medicationAllergy, "unknown");
   form.delete("authorization");
   assert.equal(parseRegistration(form, "online", today), null);
+});
+
+test("bus selections must belong to the selected week's configured journey and current version",()=>{
+  const form=registration();
+  assert.equal(parseConfiguredRegistration(form,"online",today),null);
+  form.set("arrivalStopVersion","older");assert.equal(parseRegistration(form,"online",today),null);
+  form.set("arrivalStopVersion","1:1");form.set("week","2");assert.equal(parseRegistration(form,"online",today),null);
+  form.set("week","1");form.set("arrivalStop",transportStops[1].id);assert.equal(parseRegistration(form,"online",today),null);
+  form.set("arrival","own");assert.ok(parseRegistration(form,"online",today));
 });
 
 test("the signer depends on age on the day of authorization", () => {
@@ -74,7 +88,7 @@ test("applicable bus legs and reported health needs require detail", () => {
   form.set("departure", "bus");
   form.set("departureStop", "Unlisted stop");
   assert.equal(parseRegistration(form, "online", today), null);
-  form.set("departureStop", "La Espiga");
+  form.set("departureStop", "22222222-2222-4222-8222-222222222222");
   const result = parseRegistration(form, "online", today);
   assert.equal(result?.details.departureStop, "La Espiga");
   assert.equal(result?.details.arrivalStop, undefined);

@@ -1,5 +1,8 @@
+import { getCampTransport,activeTransport,transportStopLabel,transportNeedsReview,savedTransportLabel } from "../../../lib/camp-transport";
+import { campTransportCopy } from "../../../lib/camp-transport-copy";
+import { AppForm } from "../app-form";
 import { CheckInRosterFilters } from "./roster-filters";
-import Link from "next/link";
+import Link from "../app-link";
 import { campWeekLabel, listCampWeeks } from "../../../lib/camp-week";
 import { getDatabase } from "../../../lib/database";
 import { copy } from "../../../lib/copy";
@@ -13,7 +16,7 @@ import { recordCheckIn } from "./actions";
 
 type Row = {
   id:string; camper:string; participation:"pending"|"granted"|"declined"; place_status:"pending"|"confirmed";
-  planned:string|null; stop:string|null; arrival_method:"own"|"bus"|null; actual_bus:string|null; arrived_at:Date|null; revision:number|null;
+  details:Record<string,string>; planned:string|null; stop:string|null; arrival_method:"own"|"bus"|null; actual_bus:string|null; arrived_at:Date|null; revision:number|null;
   dorm_id:number|null; dorm:string|null; birth:string; group:string; balance:number|null; departure_recorded:boolean;
 };
 
@@ -27,14 +30,18 @@ export default async function CheckIn({ params, searchParams }: {
   const weeks = await listCampWeeks(db);
   const week = weeks.find(item => String(item.id) === query.week) ?? weeks[0];
   const search = typeof query.q === "string" ? query.q.trim().slice(0,100) : "";
-  const stops = week ? (await db.query<{stop:string}>(
-    "SELECT DISTINCT details->>'arrivalStop' AS stop FROM registration WHERE week_id=$1 AND place_status<>'released' AND details->>'arrival'='bus' AND details->>'arrivalStop' IS NOT NULL ORDER BY stop",
+  const transport=week?await getCampTransport(db,week.id):{routes:[],stops:[]};
+  const configured=activeTransport(transport.stops);
+  const savedStops = week ? (await db.query<{stop:string;label:string}>(
+    "SELECT DISTINCT COALESCE(details->>'arrivalStopId','legacy:'||(details->>'arrivalStop')) AS stop,details->>'arrivalStop' AS label FROM registration WHERE week_id=$1 AND place_status<>'released' AND details->>'arrival'='bus' AND details->>'arrivalStop' IS NOT NULL ORDER BY stop",
     [week.id],
   )).rows : [];
+  const stops=[...new Map([...configured.filter(s=>s.leg==="arrival").map(s=>({stop:s.id,label:transportStopLabel(s,locale)})),...savedStops.filter(s=>!configured.some(c=>c.id===s.stop))].map(s=>[s.stop,s])).values()];
+  const vehicles=[...new Set(transport.routes.filter(r=>r.active).map(r=>r.vehicle))];
   const stop = stops.find(item => item.stop === query.stop)?.stop ?? "";
   const rows = week ? (await db.query<Row>(
     `SELECT r.id,r.first_name || ' ' || r.last_name AS camper,r.place_status,r.participation,r.date_of_birth::text AS birth,r.gender_group AS "group",
-      r.details->>'arrival' AS planned,r.details->>'arrivalStop' AS stop,
+      r.details,r.details->>'arrival' AS planned,r.details->>'arrivalStop' AS stop,
       a.arrival_method,a.actual_bus,a.arrived_at,a.revision,p.dorm_id,d.name AS dorm,
       EXISTS(SELECT 1 FROM camper_departure departure WHERE departure.registration_id=r.id) AS departure_recorded,
       CASE WHEN COALESCE(r.fee_at_registration_cents,w.fee_cents) IS NOT NULL THEN GREATEST(0,COALESCE(r.fee_at_registration_cents,w.fee_cents)
@@ -43,7 +50,7 @@ export default async function CheckIn({ params, searchParams }: {
      FROM registration r JOIN camp_week w ON w.id=r.week_id
      LEFT JOIN camper_arrival a ON a.registration_id=r.id AND a.voided_at IS NULL LEFT JOIN camper_placement p ON p.registration_id=r.id LEFT JOIN dorm d ON d.id=p.dorm_id
      WHERE r.week_id=$1 AND r.place_status<>'released' AND position(lower($2) in lower(r.first_name || ' ' || r.last_name)) > 0
-       AND ($3='' OR $2<>'' OR r.details->>'arrivalStop'=$3 OR ($4<>'' AND r.id::text=$4))
+       AND ($3='' OR $2<>'' OR COALESCE(r.details->>'arrivalStopId','legacy:'||(r.details->>'arrivalStop'))=$3 OR ($4<>'' AND r.id::text=$4))
      ORDER BY (a.arrived_at IS NOT NULL AND p.dorm_id IS NULL) DESC,lower(r.last_name),lower(r.first_name),r.id`,
     [week.id,search,stop,typeof query.camper === "string" ? query.camper : ""],
   )).rows : [];
@@ -60,7 +67,7 @@ export default async function CheckIn({ params, searchParams }: {
 
   return <ReviewFrame locale={locale} section="check-in" title={t.title} week={week?.id}>
     {status && Object.hasOwn(messages,status) && <p className="notice" role={status === "saved" ? "status" : "alert"}>{messages[status]}</p>}
-    {week && <>
+    {week && <><datalist id="arrival-vehicles">{vehicles.map(vehicle=><option value={vehicle} key={vehicle}/>)}</datalist>
       <p><Link className="action-link secondary" href={base+"/dorms?week="+week.id}>{locale === "en" ? "Dorm assignments" : "Asignaciones de dormitorios"}</Link></p>
       <section className="card">
         <CheckInRosterFilters locale={locale} week={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} stop={stop} stops={stops} search={search} />
@@ -68,8 +75,8 @@ export default async function CheckIn({ params, searchParams }: {
       {row && <section className="card" id="camper-check-in"><h2>{row.camper}</h2>
         <p>{r.place}: {r[row.place_status]} · {r.permission}: {r[row.participation]} · {r.balance}: {row.balance === null ? r.noFee : formatMoney(row.balance,locale)}</p>
         {row.arrived_at && row.participation !== "granted" && <p className="notice">{t.supervision}</p>}
-        <p><Link href={"/"+locale+"/intake/"+row.id}>{t.review}</Link></p>
-        <form action={recordCheckIn}>
+        <p><Link href={"/"+locale+"/intake/"+row.id}>{t.review}</Link></p>{transportNeedsReview(row.details,"arrival",transport.stops)&&<p className="notice">{campTransportCopy[locale].changed} · {savedTransportLabel(row.details,"arrival",locale)}</p>}
+        <AppForm action={recordCheckIn}>
           <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week.id} />
           <input type="hidden" name="camper" value={row.id} /><input type="hidden" name="q" value={search} /><input type="hidden" name="stop" value={stop} />
           {!row.arrived_at ? <>
@@ -77,7 +84,7 @@ export default async function CheckIn({ params, searchParams }: {
             <div className="grid">
               <label>{t.method}<select name="method" defaultValue={row.planned === "bus" ? "bus" : "own"}>
                 <option value="bus">{t.bus}</option><option value="own">{t.own}</option></select></label>
-              <label>{t.busName}<input name="bus" maxLength={100} /></label>
+              <label>{t.busName}<input name="bus" maxLength={100} list="arrival-vehicles"/></label>
               <label>{t.actor}<input name="actor" required maxLength={100} /></label>
             </div><button>{t.mark}</button>
           </> : <>
@@ -95,10 +102,10 @@ export default async function CheckIn({ params, searchParams }: {
               <button>{row.dorm ? t.change : t.assign}</button>
             </>}
           </>}
-        </form>
+        </AppForm>
         {row.arrived_at && (["correctArrival","undoArrival"] as const).map(operation => <details key={operation}>
           <summary>{t[operation]}</summary>
-          <form action={recordCheckIn}>
+          <AppForm action={recordCheckIn}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week.id} />
             <input type="hidden" name="camper" value={row.id} /><input type="hidden" name="q" value={search} /><input type="hidden" name="stop" value={stop} />
             <input type="hidden" name="operation" value={operation} /><input type="hidden" name="revision" value={row.revision ?? ""} />
@@ -107,14 +114,14 @@ export default async function CheckIn({ params, searchParams }: {
                 <label>{t.method}<select name="method" defaultValue={row.arrival_method ?? "own"}>
                   <option value="bus">{t.bus}</option><option value="own">{t.own}</option>
                 </select></label>
-                <label>{t.busName}<input name="bus" defaultValue={row.actual_bus ?? ""} maxLength={100} /></label>
+                <label>{t.busName}<input name="bus" defaultValue={row.actual_bus ?? ""} list="arrival-vehicles" maxLength={100} /></label>
               </>}
               <label>{t.correctionReason}<input name="reason" required maxLength={500} /></label>
               <label>{t.actor}<input name="actor" required maxLength={100} /></label>
             </div>
             {operation === "undoArrival" && row.dorm_id !== null && <label className="check"><input type="checkbox" name="removePlacement" required />{t.removePlacement}</label>}
             <button>{t[operation]}</button>
-          </form>
+          </AppForm>
         </details>)}
         <CorrectionHistory id={row.id} locale={locale} kind="arrival" />
       </section>}
@@ -123,7 +130,7 @@ export default async function CheckIn({ params, searchParams }: {
           <th scope="col">{r.permission}</th><th scope="col">{r.balance}</th><th scope="col">{t.dorm}</th></tr></thead>
         <tbody>{rows.map(item => <tr key={item.id}>
           <th scope="row"><Link href={base+"?"+new URLSearchParams([...state,["camper",item.id]])}>{item.camper}</Link><br /><small>{r[item.place_status]}</small></th>
-          <td>{item.planned === "bus" ? item.stop ?? t.bus : item.planned === "own" ? t.own : "—"}</td>
+          <td>{item.planned === "bus" ? savedTransportLabel(item.details,"arrival",locale) || t.bus : item.planned === "own" ? t.own : "—"}{transportNeedsReview(item.details,"arrival",transport.stops)&&<div className="badge warn">{campTransportCopy[locale].changed}</div>}</td>
           <td>{item.arrived_at ? t.present+(item.actual_bus ? " · "+item.actual_bus : "") : t.expected}</td>
           <td>{r[item.participation]}</td><td>{item.balance === null ? r.noFee : formatMoney(item.balance,locale)}</td>
           <td>{item.dorm ?? (item.arrived_at ? t.unassigned : "—")}</td>

@@ -1,4 +1,5 @@
 "use client";
+import { usePendingFeedback } from "./pending-feedback";
 
 import { useEffect,useState } from "react";
 import { useRouter } from "next/navigation";
@@ -68,6 +69,7 @@ export function SignedFormUpload({locale,registration,limit=signedFormMaxFiles,i
   const t = signedFormCopy[locale];
   const [files,setFiles] = useState(initialFiles);
   const [pending,setPending] = useState(false);
+  usePendingFeedback(pending);
   const [status,setStatus] = useState<"uploaded"|"failed"|null>(null);
   async function save() {
     if (!files.length || pending) return;

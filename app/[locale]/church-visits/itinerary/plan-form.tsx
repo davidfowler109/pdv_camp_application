@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../../app-form";
+
+
 import { startTransition,useActionState,useState,type ReactNode } from "react";
 import type { Locale } from "../../../../lib/copy";
 import type { ItineraryResult } from "../../../../lib/visit-itinerary";
@@ -22,7 +25,7 @@ export function MealFields({locale,meal="",source="",description=""}: {locale:Lo
 export function PlanForm({locale,label,children,reason=false}: {locale:Locale;label:string;children:ReactNode;reason?:boolean}) {
   const [result,dispatch,pending]=useActionState<ItineraryResult|null,FormData>(submitVisitPlan,null);
   const t=visitItineraryCopy[locale];
-  return <form action={dispatch} onSubmit={event => {
+  return <AppForm busy={pending} action={dispatch} onSubmit={event => {
     event.preventDefault(); if (pending) return;
     const data=new FormData(event.currentTarget); startTransition(() => dispatch(data));
   }}>
@@ -32,5 +35,5 @@ export function PlanForm({locale,label,children,reason=false}: {locale:Locale;la
     </div>
     {result && <p className="notice" role="alert">{t[result.status]}</p>}
     <button disabled={pending}>{label}</button>
-  </form>;
+  </AppForm>;
 }

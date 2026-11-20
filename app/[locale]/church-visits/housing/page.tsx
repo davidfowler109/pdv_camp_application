@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "../../app-link";
 import { notFound, redirect } from "next/navigation";
 import { getDatabase } from "../../../../lib/database";
 import { isLocale, type Locale } from "../../../../lib/copy";

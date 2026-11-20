@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getDatabase } from "../../../lib/database";
 import { currentRole } from "../../../lib/session";
+import { assignWeeklyStaff,saveStaffAvailability } from "../../../lib/staff-availability";
 import { integer } from "../../../lib/housing";
 import { lockWeek } from "../../../lib/review";
 import { staffSkills, weeklyStaffRoles } from "../../../lib/staff-copy";
@@ -38,6 +39,10 @@ export async function saveStaff(form:FormData) {
         );
         if (result.rows.length) status = "saved";
       }
+    } else if(id&&week&&operation==='availability'){
+      const values=form.getAll('availableWeek'),weeks=values.map(value=>integer(value,1,2147483647));
+      const revision=integer(form.get('availabilityRevision'),0,2147483647);
+      if(revision!==null&&weeks.every((value):value is number=>value!==null))status=await db.transaction(tx=>saveStaffAvailability(tx,{staff:id,week,weeks,revision,application:text(form,'availabilityApplication'),reason:text(form,'availabilityReason')}));
     } else if (id && week && (operation === "assign" || operation === "remove")) {
       const role = text(form,"role");
       if (weeklyStaffRoles.some(valid => valid === role)) status = await db.transaction(async tx => {
@@ -46,12 +51,8 @@ export async function saveStaff(form:FormData) {
           await tx.query("DELETE FROM weekly_staff_assignment WHERE week_id=$1 AND staff_id=$2 AND assignment_role=$3",[week,id,role]);
           return "saved";
         }
-        const { rows } = await tx.query(
-          "SELECT id FROM staff_member WHERE id=$1 AND active AND $2=ANY(COALESCE(skills,ARRAY[team_role])) FOR UPDATE",[id,role],
-        );
-        if (!rows.length) return "invalid";
-        await tx.query("INSERT INTO weekly_staff_assignment(week_id,staff_id,assignment_role) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",[week,id,role]);
-        return "saved";
+        return assignWeeklyStaff(tx,week,id,role,{confirmed:form.has('overrideConfirmed'),reason:text(form,'overrideReason')});
+
       });
     }
   } catch {

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "../../app-link";
 import { campWeekOptions, listCampWeeks } from "../../../../lib/camp-week";
 import { getDatabase } from "../../../../lib/database";
 import { camperBedCapacity } from "../../../../lib/housing";

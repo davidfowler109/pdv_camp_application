@@ -1,5 +1,6 @@
+import { AppForm } from "../app-form";
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "../app-link";
 import { StaffNav } from "../staff-nav";
 import { notFound, redirect } from "next/navigation";
 import { copy, isLocale, type Locale } from "../../../lib/copy";
@@ -25,7 +26,7 @@ export function ReviewFrame({ locale, section, title, status, week, paper, backQ
   return <>
     <header><div><div className="brand"><img src="/palabra-de-vida.png" width={118} height={54} alt="Palabra de Vida Panamá" /></div>
       <div className="actions">
-        <form action={changeLanguage}>
+        <AppForm action={changeLanguage}>
           <input type="hidden" name="locale" value={locale === "en" ? "es" : "en"} />
           <input type="hidden" name="section" value={section} />
           {week && <input type="hidden" name="week" value={week} />}
@@ -38,11 +39,11 @@ export function ReviewFrame({ locale, section, title, status, week, paper, backQ
           {paper && <input type="hidden" name="method" value="paper" />}
           {backQuery && <input type="hidden" name="from" value={backQuery} />}
           <button lang={locale === "en" ? "es" : "en"}>{locale === "en" ? "Español" : "English"}</button>
-        </form>
-        <form action={logout}><input type="hidden" name="locale" value={locale} /><button>{copy[locale].logout}</button></form>
+        </AppForm>
+        <AppForm action={logout}><input type="hidden" name="locale" value={locale} /><button>{copy[locale].logout}</button></AppForm>
       </div>
     </div></header>
-    <main><StaffNav locale={locale} week={week} active={section.startsWith("church-visits") ? "church-visits" : section.startsWith("events") ? "events" : section === "facilities" ? "facilities" : section === "departure" ? "departure" : section.startsWith("check-in") ? "check-in" : section === "intake/scholarships" ? "scholarships" : "registrations"} />
+    <main><StaffNav locale={locale} week={week} active={section.startsWith("staff") ? "staff" : section === "transport" ? "week" : section.startsWith("church-visits") ? "church-visits" : section.startsWith("events") ? "events" : section === "facilities" ? "facilities" : section === "departure" ? "departure" : section.startsWith("check-in") ? "check-in" : section === "intake/scholarships" ? "scholarships" : "registrations"} />
       {section.startsWith("intake/") && section !== "intake/scholarships" && <Link href={"/" + locale + "/intake" + (backQuery ? "?"+backQuery : week ? "?week="+week : "")}>{t.back}</Link>}<h1>{title}</h1>
       {status && Object.hasOwn(messages,status) && <p className="notice" role={status === "saved" ? "status" : "alert"}>{messages[status as keyof typeof messages]}</p>}
       {children}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "./app-link";
 import { currentRole } from "../../lib/session";
 import type { Locale } from "../../lib/copy";
 

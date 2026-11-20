@@ -1,5 +1,6 @@
+import { AppForm } from "../../app-form";
 import { randomUUID } from "node:crypto";
-import Link from "next/link";
+import Link from "../../app-link";
 import { notFound, redirect } from "next/navigation";
 import { isLocale } from "../../../../lib/copy";
 import { currentRole } from "../../../../lib/session";
@@ -58,12 +59,12 @@ export default async function VisitAttendance({params,searchParams}: {
     </div><p><strong>{t.stillHere} {counts.present}</strong></p>
       {counts.present > 0 && warnings.length > 0 && <p className="notice"><Link href={base+"/housing?visit="+id}>{t.roomReview}</Link></p>}
     </section>
-    <section className="card"><form method="get"><input name="visit" type="hidden" value={id} /><div className="grid">
+    <section className="card"><AppForm method="get"><input name="visit" type="hidden" value={id} /><div className="grid">
       <label><span>{t.search}</span><input name="q" maxLength={100} defaultValue={search} /></label>
       <label><span>{t.filter}</span><select name="state" defaultValue={state}>
         {(["all","expected","present","departed","withdrawn"] as const).map(value => <option key={value} value={value}>{t[value]}</option>)}
       </select></label>
-    </div><button>{t.searchButton}</button></form></section>
+    </div><button>{t.searchButton}</button></AppForm></section>
     <AttendanceForm key={batch} locale={locale} visit={id} batch={batch} people={filtered} filter={state} search={search} closed={Boolean(housing.visit.cancelled_at)} />
     <section className="card"><details><summary>{t.history}</summary>{history.length ? <ul>{history.map(item => <li key={item.id}>
       <strong>{t[item.operation]}</strong> · {item.date} · {item.recorded_by} · {t.affected} {item.visitor_count}

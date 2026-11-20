@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { AppForm } from "../../../app-form";
+import Link from "../../../app-link";
 import { notFound } from "next/navigation";
 import { getDatabase } from "../../../../../lib/database";
 import { isLocale,copy } from "../../../../../lib/copy";
@@ -24,9 +25,9 @@ export default async function SharedEstimate({params}: {params:Promise<{locale:s
   const staff=await currentRole()==="leadership";
   if (publication.withdrawn_at && !staff) notFound();
   return <div className="public-registration estimate-summary"><PublicRegistrationHeader>
-    <form action={changeLanguage} className="no-print"><input name="locale" type="hidden" value={locale==="en" ? "es" : "en"} />
+    <AppForm action={changeLanguage} className="no-print"><input name="locale" type="hidden" value={locale==="en" ? "es" : "en"} />
       <input name="section" type="hidden" value={"church-visits/estimate/"+id} /><button>{copy[locale].switch}</button>
-    </form>
+    </AppForm>
   </PublicRegistrationHeader><main>
     {staff && <p className="no-print"><Link href={"/"+locale+"/church-visits/itinerary?visit="+publication.visit_id}>{t.title}</Link></p>}
     <h1>{data.visit.name}</h1><p>{data.visit.church_name} · {data.visit.start} – {data.visit.end}</p>

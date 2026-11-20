@@ -1,5 +1,8 @@
 "use client";
 
+import { AppForm } from "../../app-form";
+
+
 import { startTransition,useActionState,type ReactNode } from "react";
 import type { Locale } from "../../../../lib/copy";
 import type { EventHousingResult } from "../../../../lib/event-housing";
@@ -9,7 +12,7 @@ import { submitEventHousing } from "./actions";
 export function EventHousingForm({locale,label,children}:{locale:Locale;label:string;children:ReactNode}){
   const [result,dispatch,pending]=useActionState<EventHousingResult|null,FormData>(submitEventHousing,null);
   const t=eventHousingCopy[locale];
-  return <form action={dispatch} onSubmit={event=>{
+  return <AppForm busy={pending} action={dispatch} onSubmit={event=>{
     event.preventDefault();if(pending)return;
     const form=new FormData(event.currentTarget);startTransition(()=>dispatch(form));
   }}>{children}
@@ -17,5 +20,5 @@ export function EventHousingForm({locale,label,children}:{locale:Locale;label:st
       <label><span>{t.reason} *</span><input name="reason" maxLength={1000} required /></label></div>
     {result && <p role="alert" className="notice">{t[result.status]}{result.detail && " · "+result.detail}</p>}
     <button disabled={pending}>{label}</button>
-  </form>;
+  </AppForm>;
 }

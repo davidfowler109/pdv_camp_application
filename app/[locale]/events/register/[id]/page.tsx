@@ -1,5 +1,6 @@
+import { AppForm } from "../../../app-form";
 import { randomUUID } from "node:crypto";
-import Link from "next/link";
+import Link from "../../../app-link";
 import { notFound } from "next/navigation";
 import { getDatabase } from "../../../../../lib/database";
 import { copy,isLocale } from "../../../../../lib/copy";
@@ -26,9 +27,9 @@ export default async function EventRegistration({params}:{params:Promise<{locale
   }).formatRange(new Date(event.start+"T00:00:00Z"),new Date(event.end+"T00:00:00Z"));
   return <div className="public-registration">
     <PublicRegistrationHeader>
-      <form action={changeLanguage}><input type="hidden" name="locale" value={locale==="en"?"es":"en"} />
+      <AppForm action={changeLanguage}><input type="hidden" name="locale" value={locale==="en"?"es":"en"} />
         <input type="hidden" name="section" value={"events/register/"+id} /><button lang={locale==="en"?"es":"en"}>{c.switch}</button>
-      </form>
+      </AppForm>
     </PublicRegistrationHeader>
     <main>
       {staff && <p><Link href={"/"+locale+"/events?event="+id}>{t.backToEvent}</Link></p>}
