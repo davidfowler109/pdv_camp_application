@@ -56,7 +56,21 @@ export async function changeLanguage(form: FormData) {
 export async function login(form: FormData) {
   const role = string(form, "role");
   const password = String(form.get("password") ?? "");
-  if (!isRole(role) || !validDemoPassword(role, password)) finish(form, "denied");
+  const roleValid = isRole(role);
+  const accepted = roleValid && validDemoPassword(role, password);
+  if (!accepted) {
+    // Boolean diagnostics only: never log credentials, form values, or session secrets.
+    const configuredPassword = roleValid ? process.env["PDV_" + role.toUpperCase() + "_PASSWORD"] : undefined;
+    console.warn("pilot_login_rejected", {
+      roleValid,
+      leadershipSelected: role === "leadership",
+      passwordSubmitted: password.length > 0,
+      demoEnabled: process.env.PDV_LOCAL_DEMO === "1",
+      sessionSecretReady: (process.env.PDV_SESSION_SECRET?.length ?? 0) >= 32,
+      rolePasswordReady: (configuredPassword?.length ?? 0) >= 12,
+    });
+    finish(form, "denied");
+  }
   await setSession(role);
   redirect("/" + localeOf(form));
 }
