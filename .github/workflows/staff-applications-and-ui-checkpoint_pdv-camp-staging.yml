@@ -1,65 +1,76 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - pdv-camp-staging
+name: Deploy camp application to Azure staging
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - 'staff-applications-and-ui-checkpoint'
-  workflow_dispatch:
+      - staff-applications-and-ui-checkpoint
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pdv-camp-staging
+  cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
+    # Ordinary pushes do not deploy. A deployment requires a manual
+    # run or an explicit [deploy staging] marker in the commit message.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[deploy staging]')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
+      id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out application
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '24.x'
+          cache: npm
 
-      - name: npm install, build, and test
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Package application
+        shell: bash
         run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+          test -f .next/BUILD_ID
+          files=(.next node_modules package.json package-lock.json next.config.ts)
+          if [ -d public ]; then
+            files+=(public)
+          fi
+          zip -qr "$RUNNER_TEMP/camp-staging.zip" "${files[@]}"
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: .
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-      
-      - name: Login to Azure
+      - name: Sign in to Azure
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F863B312459540148887CC7139740112 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A79CB0B09A264C1B93B165342F669BF5 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8F0AA032C8894C8F9FD3F78EECA4BC2C }}
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
+      - name: Deploy staging application
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'pdv-camp-staging'
-          slot-name: 'Production'
-          package: .
-          
+          app-name: pdv-camp-staging
+          slot-name: Production
+          package: ${{ runner.temp }}/camp-staging.zip
