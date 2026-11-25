@@ -15,8 +15,8 @@ export async function requireReview(locale: string) {
   return { locale, role };
 }
 
-export function ReviewFrame({ locale, section, title, status, week, paper, backQuery, month, day, event, visit, scholarshipSeason, followups, children }: {
-  locale: Locale; section: string; title: string; status?: string; week?: number; paper?:boolean; backQuery?:string; month?:string; day?:string; event?:string; visit?:string; scholarshipSeason?:boolean; followups?:string; children: ReactNode;
+export function ReviewFrame({ locale, section, title, status, week, paper, backQuery, month, day, event, visit, scholarshipSeason, followups, season, children }: {
+  locale: Locale; section: string; title: string; status?: string; week?: number; paper?:boolean; backQuery?:string; month?:string; day?:string; event?:string; visit?:string; scholarshipSeason?:boolean; followups?:string; season?:string; children: ReactNode;
 }) {
   const t = reviewCopy[locale];
   const messages = {
@@ -30,6 +30,7 @@ export function ReviewFrame({ locale, section, title, status, week, paper, backQ
           <input type="hidden" name="locale" value={locale === "en" ? "es" : "en"} />
           <input type="hidden" name="section" value={section} />
           {week && <input type="hidden" name="week" value={week} />}
+          {season && <input type="hidden" name="season" value={season} />}
           {month && <input type="hidden" name="month" value={month} />}
           {day && <input type="hidden" name="day" value={day} />}
           {event && <input type="hidden" name="event" value={event} />}
@@ -43,7 +44,7 @@ export function ReviewFrame({ locale, section, title, status, week, paper, backQ
         <AppForm action={logout}><input type="hidden" name="locale" value={locale} /><button>{copy[locale].logout}</button></AppForm>
       </div>
     </div></header>
-    <main><StaffNav locale={locale} week={week} active={section.startsWith("staff") ? "staff" : section === "transport" ? "week" : section.startsWith("church-visits") ? "church-visits" : section.startsWith("events") ? "events" : section === "facilities" ? "facilities" : section === "departure" ? "departure" : section.startsWith("check-in") ? "check-in" : section === "intake/scholarships" ? "scholarships" : "registrations"} />
+    <main><StaffNav locale={locale} week={week} active={section.startsWith("overview") ? "overview" : section.startsWith("staff") ? "staff" : section === "transport" ? "week" : section.startsWith("church-visits") ? "church-visits" : section.startsWith("events") ? "events" : section === "facilities" ? "facilities" : section === "departure" ? "departure" : section.startsWith("check-in") ? "check-in" : section === "intake/scholarships" ? "scholarships" : "registrations"} />
       {section.startsWith("intake/") && section !== "intake/scholarships" && <Link href={"/" + locale + "/intake" + (backQuery ? "?"+backQuery : week ? "?week="+week : "")}>{t.back}</Link>}<h1>{title}</h1>
       {status && Object.hasOwn(messages,status) && <p className="notice" role={status === "saved" ? "status" : "alert"}>{messages[status as keyof typeof messages]}</p>}
       {children}

@@ -141,19 +141,23 @@ export async function manageScholarships(form: FormData) {
         const batchId = read(form,"batchId");
         const count = read(form,"count");
         const value = moneyCents(read(form,"value"));
+        const expiresOn = read(form,"expiresOn");
         const actor = read(form,"actor");
         const distributor = read(form,"distributor");
         const distributorRole = read(form,"distributorRole");
         const email = read(form,"email"), instructions = read(form,"instructions");
-        if (!uuid.test(batchId) || !/^\d{1,3}$/.test(count) || Number(count) < 1 || !value || !actor || actor.length > 100 ||
+        if (!dateParts(expiresOn) || expiresOn < panamaDate() || !uuid.test(batchId) || !/^\d{1,3}$/.test(count) || Number(count) < 1 || !value || !actor || actor.length > 100 ||
             !distributor || distributor.length > 100 || !scholarshipDistributorRoles.some(role => role === distributorRole) || instructions.length > 1000 ||
             (email && (email.length > 254 || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email)))) return "invalid";
         const prior = await tx.query("SELECT 1 FROM scholarship_batch WHERE id=$1 AND (week_id=$2 OR season_year=$3)",
           [batchId,season ? null : weekId,season]);
         if (!prior.rows.length) {
           if (allocated + Number(count) > limit) return "allocationExceeded";
+          const fees=(await tx.query<{week:number;name:string;fee:number|null}>(
+            "SELECT id AS week,name,fee_cents AS fee FROM camp_week WHERE id=$1 OR EXTRACT(YEAR FROM starts_on)::integer=$2 ORDER BY starts_on NULLS LAST,id",[season?null:weekId,season],
+          )).rows;
           await issueBatch(tx,{id:batchId,week:season ? null : weekId,season,distributor,distributorRole,actor,
-            count:Number(count),value,email,instructions});
+            count:Number(count),value,email,instructions,expiresOn,fees});
         }
         issuedBatch = batchId;
       }

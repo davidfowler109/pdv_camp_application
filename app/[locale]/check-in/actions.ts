@@ -26,7 +26,7 @@ export async function recordCheckIn(form:FormData) {
   const query = new URLSearchParams();
   if (Number.isSafeInteger(week) && week > 0) query.set("week",String(week));
   if (/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) query.set("camper",id);
-  for (const key of ["q","stop"]) {
+  for (const key of ["q","stop","attendance"]) {
     const item = value(form,key);
     if (item) query.set(key,item.slice(0,100));
   }

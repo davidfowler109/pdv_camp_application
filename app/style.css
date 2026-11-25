@@ -90,6 +90,11 @@ label[hidden] { display: none; }
 .action-link:hover { text-decoration: underline; }
 .follow-up-queue { margin-top: 20px; }
 .roster-filters { margin: 16px 0; }
+.registration-toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 24px; }
+.registration-share { margin-inline-start: auto; max-width: 100%; }
+.registration-share .actions { align-items: end; justify-content: flex-end; }
+.registration-share input { width: 100%; }
+.registration-share button { margin-top: 0; }
 .roster-scroll { overflow-x: auto; }
 .roster-table { width: 100%; border-collapse: collapse; min-width: 620px; text-align: left; }
 .roster-table th, .roster-table td { border-bottom: 1px solid var(--line); padding: 10px 12px; vertical-align: top; }
@@ -100,6 +105,10 @@ label[hidden] { display: none; }
 .activity-overview-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
 .staff-answer { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 14px; }
 .staff-save-status { min-height: 1.6em; margin: 10px 0; color: var(--muted); font-size: .9rem; }
+.staff-validation-summary { margin: 16px 0; padding: 16px; border: 2px solid #a32626; border-radius: 8px; background: #fff3f1; color: #602020; scroll-margin-top: 16px; }
+.staff-validation-summary h2 { margin-top: 0; }
+.staff-validation-summary button { background: transparent; border: 0; color: inherit; text-decoration: underline; text-align: start; padding: 2px 0; min-height: 36px; margin-top: 0; }
+.registration-form :is(input, select, textarea, fieldset)[aria-invalid="true"] { border: 2px solid #a32626; }
 .staff-confirmation h2 { scroll-margin-top: 20px; }
 @media print {
   .staff-reference-print .no-print { display: none; }

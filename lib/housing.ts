@@ -1,12 +1,12 @@
 export type Availability = "ready" | "closed" | "noBeds" | "noTeam";
 
-export function hasCabinTeam(adultLeaders: number, counselors: number, counselorsRequired: boolean) {
-  return adultLeaders >= 2 && counselors >= (counselorsRequired ? 1 : 0) && counselors <= 3;
+export function hasCabinTeam(adultLeaders: number) {
+  return adultLeaders >= 2;
 }
 
-export function availability(inService: boolean, camperBeds: number, guides: number, counselors: number, counselorsRequired: boolean): Availability {
+export function availability(inService: boolean, camperBeds: number, guides: number): Availability {
   if (!inService) return "closed";
-  if (!hasCabinTeam(guides,counselors,counselorsRequired)) return "noTeam";
+  if (!hasCabinTeam(guides)) return "noTeam";
   return camperBeds > 0 ? "ready" : "noBeds";
 }
 

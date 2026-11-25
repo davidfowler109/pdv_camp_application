@@ -7,7 +7,7 @@ import { checkInCopy } from "../../../../lib/check-in-copy";
 import { requireReview, ReviewFrame } from "../../intake/review-frame";
 import { WeekSelector } from "../../week-selector";
 
-type Room = {id:number;name:string;building:string;usable:number;guests:number;guides:string[];counselors:string[]};
+type Room = {id:number;name:string;building:string;usable:number;guests:number;guides:string[]};
 type Camper = {id:string;name:string;dorm_id:number|null;departure_recorded:boolean};
 
 export default async function DormAssignments({ params, searchParams }: {
@@ -26,9 +26,7 @@ export default async function DormAssignments({ params, searchParams }: {
     db.query<Room>(
       `SELECT d.id,d.name,b.name AS building,COALESCE(w.usable_beds,d.default_usable_beds,d.physical_beds) AS usable,w.guest_beds AS guests,
         ARRAY(SELECT s.name FROM weekly_dorm_staff x JOIN staff_member s ON s.id=x.staff_id
-          WHERE x.week_id=w.week_id AND x.dorm_id=d.id AND COALESCE(x.assignment_role,s.team_role)='guide' AND s.adult ORDER BY s.name,s.id) AS guides,
-        ARRAY(SELECT s.name FROM weekly_dorm_staff x JOIN staff_member s ON s.id=x.staff_id
-          WHERE x.week_id=w.week_id AND x.dorm_id=d.id AND COALESCE(x.assignment_role,s.team_role)='equipante' ORDER BY s.name,s.id) AS counselors
+          WHERE x.week_id=w.week_id AND x.dorm_id=d.id AND COALESCE(x.assignment_role,s.team_role)='guide' AND s.adult ORDER BY s.name,s.id) AS guides
         FROM weekly_dorm w JOIN dorm d ON d.id=w.dorm_id JOIN building b ON b.id=d.building_id
         WHERE w.week_id=$1 AND d.room_kind='camper'`,[week.id],
     ).then(result => result.rows),
@@ -68,7 +66,7 @@ export default async function DormAssignments({ params, searchParams }: {
         return <section className="card" key={room.id}>
           <h3>{room.building} · {room.name}</h3>
           <p>{labels.occupied}: {assigned.length} / {capacity}</p>
-          <p>{c.guides}: {room.guides.join(", ") || "—"}<br />{c.helpers}: {room.counselors.join(", ") || "—"}</p>
+          <p>{c.guides}: {room.guides.join(", ") || "—"}</p>
           {assigned.length ? camperList(assigned,true) : <p className="muted">{labels.empty}</p>}
         </section>;
       })}</div>

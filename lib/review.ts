@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Database } from "./database";
+import type {ScholarshipFee} from './scholarship-pricing';
 
 export const scholarshipDistributorRoles = ["pastor","staff","missionary"] as const;
 
@@ -54,12 +55,12 @@ export function normalizeScholarshipCode(input: string) {
 
 export async function issueBatch(tx: Database, batch: {
   id:string; week:number|null; season:number|null; distributor:string; distributorRole:string; actor:string;
-  count:number; value:number; email:string; instructions:string;
+  count:number; value:number; email:string; instructions:string; expiresOn?:string; fees?:ScholarshipFee[];
 }) {
   await tx.query(
-    `INSERT INTO scholarship_batch(id,week_id,season_year,distributor,distributor_role,issued_by,distributor_email,instructions)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [batch.id,batch.week,batch.season,batch.distributor,batch.distributorRole,batch.actor,batch.email || null,batch.instructions || null],
+    `INSERT INTO scholarship_batch(id,week_id,season_year,distributor,distributor_role,issued_by,distributor_email,instructions,expires_on,fee_snapshot)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)`,
+    [batch.id,batch.week,batch.season,batch.distributor,batch.distributorRole,batch.actor,batch.email || null,batch.instructions || null,batch.expiresOn??null,batch.fees?JSON.stringify(batch.fees):null],
   );
   let remaining = batch.count;
   for (let attempt = 0; remaining > 0 && attempt < 5; attempt++) {
@@ -78,6 +79,7 @@ export async function redeemCode(tx: Database, week: number, id: string, code: s
     `UPDATE scholarship_code c SET registration_id=$1, redeemed_at=CURRENT_TIMESTAMP FROM scholarship_batch b
       WHERE c.batch_id=b.id AND c.code=$3 AND c.registration_id IS NULL
       AND (b.week_id=$2 OR b.season_year=(SELECT EXTRACT(YEAR FROM starts_on)::integer FROM camp_week WHERE id=$2))
+      AND (b.expires_on IS NULL OR b.expires_on >= (CURRENT_TIMESTAMP AT TIME ZONE 'America/Panama')::date)
       AND NOT EXISTS (SELECT 1 FROM scholarship_code WHERE registration_id=$1) RETURNING c.code`, [id,week,code],
   );
   return rows.length > 0;

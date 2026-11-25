@@ -1,5 +1,9 @@
 export const scholarshipCopy = {
   en:{
+    expiration:"Expiration date", expirationHelp:"Codes can be redeemed through this date, inclusive, in Panama. Expired unused codes remain part of the allocated award count.",
+    camperCost:"Cost per camper (USD)", campFee:"Regular camp fee", costUnknown:"Camp fee not configured; camper cost unavailable.",
+    costHelp:"Camper cost is the regular camp fee minus the scholarship, with a minimum of $0. Early-bird pricing, payments or other adjustments may change the final balance.",
+    validThrough:(date:string)=>`Valid through ${date}, inclusive (Panama time).`,noExpiration:"No expiration date recorded.",expired:"Expired unused codes",
     email:"Distributor email (optional)", instructions:"Instructions for the distributor (optional)",
     emailCodes:"Email available codes", openDraft:"Open email draft", copyDraft:"Copy the message below into your email draft.",
     subject:"Palabra de Vida scholarship codes",
@@ -13,6 +17,10 @@ export const scholarshipCopy = {
     intro:(scope:string)=>`Here are your Palabra de Vida scholarship codes for ${scope}. Each code can be used once.`,
   },
   es:{
+    expiration:"Fecha de vencimiento", expirationHelp:"Los códigos se pueden canjear hasta esta fecha, inclusive, según la hora de Panamá. Los códigos vencidos sin usar siguen contando como becas asignadas.",
+    camperCost:"Costo por campista (USD)", campFee:"Tarifa regular del campamento", costUnknown:"Tarifa no configurada; costo por campista no disponible.",
+    costHelp:"El costo por campista es la tarifa regular menos la beca, con un mínimo de $0. La tarifa anticipada, los pagos u otros ajustes pueden cambiar el saldo final.",
+    validThrough:(date:string)=>`Válido hasta el ${date}, inclusive (hora de Panamá).`,noExpiration:"Sin fecha de vencimiento registrada.",expired:"Códigos vencidos sin usar",
     email:"Correo electrónico de quien distribuye los códigos (opcional)", instructions:"Instrucciones para quien distribuye los códigos (opcional)",
     emailCodes:"Enviar por correo los códigos disponibles", openDraft:"Abrir borrador de correo", copyDraft:"Copia el mensaje de abajo en el borrador de correo.",
     subject:"Códigos de beca de Palabra de Vida",

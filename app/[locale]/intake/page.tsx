@@ -1,3 +1,4 @@
+import {campOverviewCopy} from "../../../lib/camp-overview-copy";
 import { AppForm } from "../app-form";
 import Link from "../app-link";
 import { campPaymentCopy } from "../../../lib/camp-payment-copy";
@@ -10,6 +11,7 @@ import { reviewCopy, formatMoney } from "../../../lib/review-copy";
 import { rosterCopy } from "../../../lib/roster-copy";
 import { requireReview, ReviewFrame } from "./review-frame";
 import { RegistrationWeekFilter } from "./week-filter";
+import { RegistrationLink } from "../church-visits/registration-link";
 
 type Row = {
   id:string; camper:string; balance:number|null; followup_date:string|null; follow_up_reason:string|null;
@@ -19,7 +21,7 @@ const size = 25;
 
 export default async function Intake({ params, searchParams }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ week?:string; q?:string; followups?:string; page?:string; gender?:string; church?:string }>;
+  searchParams: Promise<{ week?:string; q?:string; followups?:string; page?:string; gender?:string; church?:string; place?:string }>;
 }) {
   const { locale } = await requireReview((await params).locale);
   const query = await searchParams;
@@ -33,6 +35,7 @@ export default async function Intake({ params, searchParams }: {
   const followupViews = ["open","overdue","today","undated"] as const;
   const followups = followupViews.find(view => view === query.followups) ?? "";
   const followupLabels = {open:r.openFollowups,overdue:r.overdue,today:r.dueToday,undated:r.undatedFollowups};
+  const place=['active','confirmed','released'].find(value=>value===query.place)??'';
   const gender = query.gender === "female" || query.gender === "male" ? query.gender : "";
   const church = typeof query.church === "string" ? query.church.trim().slice(0,100) : "";
   const filter = `FROM registration r JOIN camp_week w ON w.id=r.week_id WHERE r.week_id=$1
@@ -44,8 +47,9 @@ export default async function Intake({ params, searchParams }: {
       WHEN 'undated' THEN r.follow_up IS NULL AND r.follow_up_reason IS NOT NULL
       ELSE true END
     AND ($4 = '' OR r.gender_group = $4)
-    AND position(lower($5) in lower(COALESCE(r.details->>'homeChurch',''))) > 0`;
-  const values = [week?.id,search,followups,gender,church,today];
+    AND position(lower($5) in lower(COALESCE(r.details->>'homeChurch',''))) > 0
+    AND ($7='' OR ($7='active' AND r.place_status<>'released') OR r.place_status=$7)`;
+  const values = [week?.id,search,followups,gender,church,today,place];
   const [total,counts] = week ? await Promise.all([
     db.query<{count:number}>("SELECT count(*)::integer AS count "+filter,values).then(result=>result.rows[0].count),
     db.query<Record<typeof followupViews[number],number>>(
@@ -66,7 +70,7 @@ export default async function Intake({ params, searchParams }: {
         - COALESCE((SELECT sum(amount_cents) FROM registration_payment p WHERE p.registration_id=r.id),0)
         - COALESCE((SELECT value_cents FROM scholarship_code c WHERE c.registration_id=r.id),0))::double precision END AS balance
       `+filter+` ORDER BY CASE WHEN $3 <> '' THEN r.follow_up END ASC NULLS LAST,
-      lower(r.last_name),lower(r.first_name),r.id LIMIT $7 OFFSET $8`,[...values,size,offset],
+      lower(r.last_name),lower(r.first_name),r.id LIMIT $8 OFFSET $9`,[...values,size,offset],
   )).rows : [];
   function state(pageNumber:number) {
     const state = new URLSearchParams();
@@ -74,6 +78,7 @@ export default async function Intake({ params, searchParams }: {
     if (search) state.set("q",search);
     if (followups) state.set("followups",followups);
     if (gender) state.set("gender",gender);
+    if (place) state.set("place",place);
     if (church) state.set("church",church);
     if (pageNumber > 1) state.set("page",String(pageNumber));
     return state;
@@ -82,9 +87,14 @@ export default async function Intake({ params, searchParams }: {
 
   return <ReviewFrame locale={locale} section="intake" title={t.title} week={week?.id} followups={followups}>
     {week ? <section className="card">
-      <div className="actions">
-        <Link className="action-link" href={base+"/new?week="+week.id}>{t.add}</Link>
-        <Link className="action-link secondary" href={base+"/print?week="+week.id}>{t.print}</Link>
+      <div className="registration-toolbar">
+        <div className="actions">
+          <Link className="action-link" href={base+"/new?week="+week.id}>{t.add}</Link>
+          <Link className="action-link secondary" href={base+"/print?week="+week.id}>{t.print}</Link>
+        </div>
+        <div className="registration-share">
+          <RegistrationLink key={week.id} locale={locale} path={"/"+locale+"/register?week="+week.id} label={t.publicLink} />
+        </div>
       </div>
       <section className="follow-up-queue" aria-labelledby="follow-up-queue-title">
         <h2 id="follow-up-queue-title">{r.followupQueue}</h2>
@@ -101,9 +111,12 @@ export default async function Intake({ params, searchParams }: {
           <RegistrationWeekFilter label={f.week} selected={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} />
           <label>{campPaymentCopy[locale].search}<input type="search" name="q" defaultValue={search} maxLength={100} /></label>
         </div>
-        <details open={Boolean(gender || church)}>
+        <details open={Boolean(gender || church || place)}>
           <summary>{t.advanced}</summary>
           <div className="grid">
+            <label>{campOverviewCopy[locale].registrationStatus}<select name="place" defaultValue={place}>
+              <option value="">{campOverviewCopy[locale].allRegistrations}</option><option value="active">{campOverviewCopy[locale].registered}</option><option value="confirmed">{campOverviewCopy[locale].confirmed}</option><option value="released">{campOverviewCopy[locale].released}</option>
+            </select></label>
             <label>{f.group}<select name="gender" defaultValue={gender}>
               <option value="">{t.anyGroup}</option><option value="female">{copy[locale].female}</option><option value="male">{copy[locale].male}</option>
             </select></label>

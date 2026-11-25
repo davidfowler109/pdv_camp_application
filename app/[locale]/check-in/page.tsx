@@ -1,3 +1,5 @@
+import {campOverviewCopy} from "../../../lib/camp-overview-copy";
+import {attendanceView,attendanceFilterSql,departedFromCampSql} from "../../../lib/camp-overview";
 import { getCampTransport,activeTransport,transportStopLabel,transportNeedsReview,savedTransportLabel } from "../../../lib/camp-transport";
 import { campTransportCopy } from "../../../lib/camp-transport-copy";
 import { AppForm } from "../app-form";
@@ -15,16 +17,17 @@ import { CorrectionHistory } from "../correction-history";
 import { recordCheckIn } from "./actions";
 
 type Row = {
-  id:string; camper:string; participation:"pending"|"granted"|"declined"; place_status:"pending"|"confirmed";
+  id:string; camper:string; participation:"pending"|"granted"|"declined"; place_status:"pending"|"confirmed"|"released";
   details:Record<string,string>; planned:string|null; stop:string|null; arrival_method:"own"|"bus"|null; actual_bus:string|null; arrived_at:Date|null; revision:number|null;
-  dorm_id:number|null; dorm:string|null; birth:string; group:string; balance:number|null; departure_recorded:boolean;
+  dorm_id:number|null; dorm:string|null; birth:string; group:string; balance:number|null; departure_recorded:boolean; physically_departed:boolean;
 };
 
 export default async function CheckIn({ params, searchParams }: {
-  params:Promise<{locale:string}>; searchParams:Promise<{week?:string;q?:string;stop?:string;camper?:string;status?:string}>;
+  params:Promise<{locale:string}>; searchParams:Promise<{week?:string;q?:string;stop?:string;camper?:string;status?:string;attendance?:string}>;
 }) {
   const { locale } = await requireReview((await params).locale);
   const query = await searchParams;
+  const attendance=attendanceView(query.attendance);
   const t = checkInCopy[locale], c = copy[locale], r = reviewCopy[locale];
   const db = await getDatabase();
   const weeks = await listCampWeeks(db);
@@ -43,13 +46,16 @@ export default async function CheckIn({ params, searchParams }: {
     `SELECT r.id,r.first_name || ' ' || r.last_name AS camper,r.place_status,r.participation,r.date_of_birth::text AS birth,r.gender_group AS "group",
       r.details,r.details->>'arrival' AS planned,r.details->>'arrivalStop' AS stop,
       a.arrival_method,a.actual_bus,a.arrived_at,a.revision,p.dorm_id,d.name AS dorm,
+      ${departedFromCampSql} AS physically_departed,
       EXISTS(SELECT 1 FROM camper_departure departure WHERE departure.registration_id=r.id) AS departure_recorded,
       CASE WHEN COALESCE(r.fee_at_registration_cents,w.fee_cents) IS NOT NULL THEN GREATEST(0,COALESCE(r.fee_at_registration_cents,w.fee_cents)
         - COALESCE((SELECT sum(amount_cents) FROM registration_payment pay WHERE pay.registration_id=r.id),0)
         - COALESCE((SELECT value_cents FROM scholarship_code s WHERE s.registration_id=r.id),0))::double precision END AS balance
      FROM registration r JOIN camp_week w ON w.id=r.week_id
      LEFT JOIN camper_arrival a ON a.registration_id=r.id AND a.voided_at IS NULL LEFT JOIN camper_placement p ON p.registration_id=r.id LEFT JOIN dorm d ON d.id=p.dorm_id
-     WHERE r.week_id=$1 AND r.place_status<>'released' AND position(lower($2) in lower(r.first_name || ' ' || r.last_name)) > 0
+     LEFT JOIN camper_departure departure ON departure.registration_id=a.registration_id
+     LEFT JOIN return_bus bus ON bus.week_id=departure.week_id AND bus.bus_key=departure.bus_key
+     WHERE r.week_id=$1 AND (r.place_status<>'released'${attendance?" OR a.registration_id IS NOT NULL":""}) AND (${attendanceFilterSql(attendance)}) AND position(lower($2) in lower(r.first_name || ' ' || r.last_name)) > 0
        AND ($3='' OR $2<>'' OR COALESCE(r.details->>'arrivalStopId','legacy:'||(r.details->>'arrivalStop'))=$3 OR ($4<>'' AND r.id::text=$4))
      ORDER BY (a.arrived_at IS NOT NULL AND p.dorm_id IS NULL) DESC,lower(r.last_name),lower(r.first_name),r.id`,
     [week.id,search,stop,typeof query.camper === "string" ? query.camper : ""],
@@ -62,6 +68,7 @@ export default async function CheckIn({ params, searchParams }: {
   if (week) state.set("week",String(week.id));
   if (search) state.set("q",search);
   if (stop) state.set("stop",stop);
+  if (attendance) state.set("attendance",attendance);
   const messages = {saved:t.saved,invalid:t.invalid,unavailable:t.unavailable,noLonger:t.noLonger,reasonRequired:t.reasonRequired,noPlace:t.noPlace,departureRecorded:t.departureRecorded,placementNeedsConfirmation:t.placementNeedsConfirmation,stale:t.stale};
   const status = query.status as keyof typeof messages | undefined;
 
@@ -70,7 +77,7 @@ export default async function CheckIn({ params, searchParams }: {
     {week && <><datalist id="arrival-vehicles">{vehicles.map(vehicle=><option value={vehicle} key={vehicle}/>)}</datalist>
       <p><Link className="action-link secondary" href={base+"/dorms?week="+week.id}>{locale === "en" ? "Dorm assignments" : "Asignaciones de dormitorios"}</Link></p>
       <section className="card">
-        <CheckInRosterFilters locale={locale} week={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} stop={stop} stops={stops} search={search} />
+        <CheckInRosterFilters locale={locale} week={week.id} weeks={weeks.map(item => ({id:item.id,label:campWeekLabel(item,locale)}))} stop={stop} stops={stops} search={search} attendance={attendance} />
       </section>
       {row && <section className="card" id="camper-check-in"><h2>{row.camper}</h2>
         <p>{r.place}: {r[row.place_status]} · {r.permission}: {r[row.participation]} · {r.balance}: {row.balance === null ? r.noFee : formatMoney(row.balance,locale)}</p>
@@ -78,7 +85,7 @@ export default async function CheckIn({ params, searchParams }: {
         <p><Link href={"/"+locale+"/intake/"+row.id}>{t.review}</Link></p>{transportNeedsReview(row.details,"arrival",transport.stops)&&<p className="notice">{campTransportCopy[locale].changed} · {savedTransportLabel(row.details,"arrival",locale)}</p>}
         <AppForm action={recordCheckIn}>
           <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week.id} />
-          <input type="hidden" name="camper" value={row.id} /><input type="hidden" name="q" value={search} /><input type="hidden" name="stop" value={stop} />
+          <input type="hidden" name="camper" value={row.id} /><input type="hidden" name="q" value={search} /><input type="hidden" name="stop" value={stop} /><input type="hidden" name="attendance" value={attendance} />
           {!row.arrived_at ? <>
             <input type="hidden" name="operation" value="arrive" />
             <div className="grid">
@@ -98,7 +105,7 @@ export default async function CheckIn({ params, searchParams }: {
                 <label>{t.actor}<input name="actor" required maxLength={100} /></label>
               </div>
               <ul>{options.map(room => <li key={room.id}><strong>{room.name}</strong> · {t.available}: {room.beds}
-                {" · "}{c.guides}: {room.guides.join(", ")} · {c.helpers}: {room.counselors.join(", ")}</li>)}</ul>
+                {" · "}{c.guides}: {room.guides.join(", ")}</li>)}</ul>
               <button>{row.dorm ? t.change : t.assign}</button>
             </>}
           </>}
@@ -107,7 +114,7 @@ export default async function CheckIn({ params, searchParams }: {
           <summary>{t[operation]}</summary>
           <AppForm action={recordCheckIn}>
             <input type="hidden" name="locale" value={locale} /><input type="hidden" name="week" value={week.id} />
-            <input type="hidden" name="camper" value={row.id} /><input type="hidden" name="q" value={search} /><input type="hidden" name="stop" value={stop} />
+            <input type="hidden" name="camper" value={row.id} /><input type="hidden" name="q" value={search} /><input type="hidden" name="stop" value={stop} /><input type="hidden" name="attendance" value={attendance} />
             <input type="hidden" name="operation" value={operation} /><input type="hidden" name="revision" value={row.revision ?? ""} />
             <div className="grid">
               {operation === "correctArrival" && <>
@@ -131,7 +138,7 @@ export default async function CheckIn({ params, searchParams }: {
         <tbody>{rows.map(item => <tr key={item.id}>
           <th scope="row"><Link href={base+"?"+new URLSearchParams([...state,["camper",item.id]])}>{item.camper}</Link><br /><small>{r[item.place_status]}</small></th>
           <td>{item.planned === "bus" ? savedTransportLabel(item.details,"arrival",locale) || t.bus : item.planned === "own" ? t.own : "—"}{transportNeedsReview(item.details,"arrival",transport.stops)&&<div className="badge warn">{campTransportCopy[locale].changed}</div>}</td>
-          <td>{item.arrived_at ? t.present+(item.actual_bus ? " · "+item.actual_bus : "") : t.expected}</td>
+          <td>{item.arrived_at ? (item.physically_departed?campOverviewCopy[locale].departed:t.present)+(item.actual_bus ? " · "+item.actual_bus : "") : t.expected}</td>
           <td>{r[item.participation]}</td><td>{item.balance === null ? r.noFee : formatMoney(item.balance,locale)}</td>
           <td>{item.dorm ?? (item.arrived_at ? t.unassigned : "—")}</td>
         </tr>)}</tbody>

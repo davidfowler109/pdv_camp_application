@@ -1,6 +1,7 @@
 import { staffAvailability,staffRoleEligible,type StaffAvailability } from "../../lib/staff-availability";
 import { staffAvailabilityCopy } from "../../lib/staff-availability-copy";
 import { AvailabilityOverrideFields } from "./staff/availability-fields";
+import {DormSaveForm} from "./dorm-save-form";
 import { AppForm } from "./app-form";
 import Image from "next/image";
 import Link from "./app-link";
@@ -13,7 +14,7 @@ import { reviewCopy, formatMoney } from "../../lib/review-copy";
 import { registrationCopy } from "../../lib/registration-copy";
 import { notFound, redirect } from "next/navigation";
 import { campPaymentCopy } from "../../lib/camp-payment-copy";
-import { changeLanguage, login, logout, saveDorm, saveWeek } from "./actions";
+import { changeLanguage, login, logout, saveDormResult, saveWeek } from "./actions";
 import { copy, isLocale, type Locale } from "../../lib/copy";
 import { getDatabase } from "../../lib/database";
 import { facilitiesCopy } from "../../lib/facilities-copy";
@@ -32,9 +33,9 @@ type Dorm = {
 function DormForm({ locale, week, staff, dorm }: { locale: Locale; week: Week; staff: Staff[]; dorm: Dorm }) {
   const t = copy[locale], h = housingCopy[locale];
   const a=staffAvailabilityCopy[locale];
-  const eligible=(role:'guide'|'equipante')=>staff.filter(member=>dorm.staff_slots.includes(role+':'+member.id)||(member.active&&member.cabin_ids.every(id=>id===dorm.id)&&member.skills.includes(role)&&staffRoleEligible(member.availability,role,member.adult)));
-  const choice=(member:Staff,role:'guide'|'equipante')=><label className="check" key={member.id}><input type="checkbox" name="staff" value={role+':'+member.id} defaultChecked={dorm.staff_slots.includes(role+':'+member.id)}/>{member.name}{member.availability?.state!=='available'&&<span className="badge warn">{a[member.availability?.state??'unknown']}</span>}</label>;
-  return <AppForm action={saveDorm}>
+  const eligible=staff.filter(member=>dorm.staff_slots.includes('guide:'+member.id)||(member.active&&member.cabin_ids.every(id=>id===dorm.id)&&member.skills.includes('guide')&&staffRoleEligible(member.availability,'guide',member.adult)));
+  const choice=(member:Staff)=><label className="check" key={member.id}><input type="checkbox" name="staff" data-availability-exception={!dorm.staff_slots.includes('guide:'+member.id)&&member.availability?.state!=='available'?'true':undefined} value={'guide:'+member.id} defaultChecked={dorm.staff_slots.includes('guide:'+member.id)}/>{member.name}{member.availability?.state!=='available'&&<span className="badge warn">{a[member.availability?.state??'unknown']}</span>}</label>;
+  return <DormSaveForm locale={locale} action={saveDormResult}>
     <input type="hidden" name="locale" value={locale} />
     <input type="hidden" name="week" value={week.id} />
     <input type="hidden" name="dorm" value={dorm.id} />
@@ -48,13 +49,13 @@ function DormForm({ locale, week, staff, dorm }: { locale: Locale; week: Week; s
       <label><span>{t.max} <small>{h.openAge}</small></span><input type="number" name="max" min={7} max={18} defaultValue={(dorm.configured ? dorm.maximum_age : week.maximum_age) ?? ""} /></label>
     </div>
     <label className="check"><input type="checkbox" name="active" defaultChecked={dorm?.in_service ?? true} />{t.active}</label>
-    {(['guide','equipante'] as const).map(role=><fieldset key={role}><legend>{role==='guide'?t.guides:t.helpers}</legend>{eligible(role).filter(member=>dorm.staff_slots.includes(role+':'+member.id)||member.availability?.state==='available').map(member=>choice(member,role))}</fieldset>)}
-    {(['guide','equipante'] as const).some(role=>eligible(role).some(member=>!dorm.staff_slots.includes(role+':'+member.id)&&member.availability?.state!=='available'))&&<details><summary>{a.override}</summary>
-      {(['guide','equipante'] as const).map(role=><fieldset key={role}><legend>{role==='guide'?t.guides:t.helpers}</legend>{eligible(role).filter(member=>!dorm.staff_slots.includes(role+':'+member.id)&&member.availability?.state!=='available').map(member=>choice(member,role))}</fieldset>)}
+    <fieldset><legend>{t.guides}</legend>{eligible.filter(member=>dorm.staff_slots.includes('guide:'+member.id)||member.availability?.state==='available').map(choice)}</fieldset>
+    {eligible.some(member=>!dorm.staff_slots.includes('guide:'+member.id)&&member.availability?.state!=='available')&&<details><summary>{a.override}</summary>
+      <fieldset><legend>{t.guides}</legend>{eligible.filter(member=>!dorm.staff_slots.includes('guide:'+member.id)&&member.availability?.state!=='available').map(choice)}</fieldset>
       <AvailabilityOverrideFields locale={locale} required={false}/>
     </details>}
     <button>{t.saveDorm}</button>
-  </AppForm>;
+  </DormSaveForm>;
 }
 
 function WeekForm({ locale, week }: { locale:Locale; week?:Week }) {
@@ -165,17 +166,15 @@ export default async function Page({ params, searchParams }: {
         <h2>{h.weeklyTeam}</h2>
         <div className="dorms">{dorms.map(dorm => {
           const guides = staff.filter(member => member.adult && dorm.staff_slots.includes("guide:"+member.id));
-          const helpers = staff.filter(member => dorm.staff_slots.includes("equipante:"+member.id));
           const beds = Math.max(0,camperBedCapacity(dorm.usable_beds, dorm.guest_beds, guides.length) - dorm.occupants);
-          const counselorsRequired = week.minimum_age < 18;
-          const state = availability(dorm.active && dorm.in_service, beds, guides.length, helpers.length, counselorsRequired);
-          const stateLabel = state === "noTeam" && !counselorsRequired ? t.noAdultTeam : t[state];
+          const state = availability(dorm.active && dorm.in_service, beds, guides.length);
+          const stateLabel = t[state];
           return <section className="card" key={dorm.id}>
             <h3>{dorm.name}</h3><p className="muted">{dorm.building} · {dorm.gender_group ? t[dorm.gender_group] + " · " + (dorm.maximum_age === null ? dorm.minimum_age + "+" : dorm.minimum_age + "–" + dorm.maximum_age) : h.unset}</p>
             <span className={state === "ready" && !dorm.needs_cleaning ? "badge" : "badge warn"}>{state !== "closed" && dorm.needs_cleaning ? h.cleaning : stateLabel}</span>
-            <p>{t.open}: {beds}<br />{t.usable}: {dorm.usable_beds} · {t.guests}: {dorm.guest_beds}<br />{t.guides}: {guides.map(person => person.name).join(", ") || "—"}<br />{t.helpers}: {helpers.map(person => person.name).join(", ") || "—"}</p>
-            {[...guides,...helpers].some(member=>member.availability?.state!=='available')&&<p className="notice">{[...guides,...helpers].filter(member=>member.availability?.state!=='available').map(member=>member.name+': '+staffAvailabilityCopy[locale][member.availability?.state??'unknown']).join(' · ')}</p>}
-            {editable && <details><summary>{h.configure}</summary><DormForm key={JSON.stringify(dorm)} locale={locale} week={week!} staff={staff} dorm={dorm} /></details>}
+            <p>{t.open}: {beds}<br />{t.usable}: {dorm.usable_beds} · {t.guests}: {dorm.guest_beds}<br />{t.guides}: {guides.map(person => person.name).join(", ") || "—"}</p>
+            {guides.some(member=>member.availability?.state!=='available')&&<p className="notice">{guides.filter(member=>member.availability?.state!=='available').map(member=>member.name+': '+staffAvailabilityCopy[locale][member.availability?.state??'unknown']).join(' · ')}</p>}
+            {editable && <details><summary>{h.configure}</summary><DormForm key={week.id+":"+dorm.id} locale={locale} week={week!} staff={staff} dorm={dorm} /></details>}
           </section>;
         })}</div>
 

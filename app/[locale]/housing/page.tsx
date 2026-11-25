@@ -3,7 +3,7 @@ import { getDatabase } from "../../../lib/database";
 import { facilitiesCopy } from "../../../lib/facilities-copy";
 import { copy, type Locale } from "../../../lib/copy";
 import { housingCopy } from "../../../lib/housing-copy";
-import { changeLanguage, logout, saveReadiness, saveRoom } from "../actions";
+import { changeLanguage, deleteRoom, logout, saveReadiness, saveRoom } from "../actions";
 import { StaffNav } from "../staff-nav";
 import { requireReview } from "../intake/review-frame";
 
@@ -59,6 +59,9 @@ export default async function Page({ params, searchParams }: {
       <StaffNav locale={locale} active="housing" week={selectedWeek} />
       <h1>{h.housing}</h1><p>{h.inventoryHelp}</p><p className="muted">{h.turnoverHelp}</p>
       {status === "saved" && <p className="notice" role="status">{t.saved}</p>}
+      {status === "deleted" && <p className="notice" role="status">{h.deleted}</p>}
+      {status === "roomInUse" && <p className="notice" role="alert">{h.roomInUse}</p>}
+      {status === "denied" && <p className="notice" role="alert">{t.denied}</p>}
       {status === "facilityConflict" && <p className="notice" role="alert">{facilitiesCopy[locale].weekConflict}</p>}
       {status === "invalid" && <p className="notice" role="alert">{t.invalid}</p>}
       {status === "unavailable" && <p className="notice" role="alert">{t.unavailable}</p>}
@@ -77,6 +80,15 @@ export default async function Page({ params, searchParams }: {
               </select></label><button>{h.changeReadiness}</button>
             </AppForm>
             <details><summary>{h.editRoom}</summary><RoomForm locale={locale} room={room} /></details>
+            <details><summary>{h.deleteRoom}</summary>
+              <p>{h.deleteHelp}</p>
+              <AppForm action={deleteRoom}>
+                <input name="locale" type="hidden" value={locale} /><input name="dorm" type="hidden" value={room.id} />
+                <p><strong>{room.building} · {room.name}</strong></p>
+                <label className="check"><input name="confirmDelete" type="checkbox" value="yes" required />{h.confirmDelete}</label>
+                <button>{h.deleteRoom}</button>
+              </AppForm>
+            </details>
           </>}
         </article>)}</div>
       </section>)}

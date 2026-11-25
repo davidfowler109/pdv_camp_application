@@ -1,6 +1,7 @@
 export const rosterCopy = {
   en: {
     title:"Registrations", add:"New registration", print:"Print blank form", desk:"On this device",
+    publicLink:"Public registration link for the selected week",
     method:"How was permission to collect camper information given?", paper:"On a signed paper form", newAnother:"Start another registration",
     search:"Search camper names", advanced:"Advanced search", anyGroup:"Any group", noMatches:"No registrations match these filters.", apply:"Apply filters", previous:"Previous", next:"Next", of:"of", camper:"Camper",
     back:"Back to registrations", paperHelp:"Complete the fields below. Asterisks mark required items. Complete conditional items when applicable.",
@@ -9,6 +10,7 @@ export const rosterCopy = {
   },
   es: {
     title:"Inscripciones", add:"Nueva inscripción", print:"Imprimir formulario en blanco", desk:"En este dispositivo",
+    publicLink:"Enlace público de inscripción para la semana seleccionada",
     method:"¿Cómo se dio el permiso para recopilar la información del campista?", paper:"En un formulario firmado en papel", newAnother:"Iniciar otra inscripción",
     search:"Buscar campistas por nombre", advanced:"Búsqueda avanzada", anyGroup:"Todos los grupos", noMatches:"Ninguna inscripción coincide con estos filtros.", apply:"Aplicar filtros", previous:"Anterior", next:"Siguiente", of:"de", camper:"Campista",
     back:"Volver a inscripciones", paperHelp:"Completa los campos. Los asteriscos indican campos obligatorios. Responde las preguntas condicionales cuando correspondan.",

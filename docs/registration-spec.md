@@ -20,6 +20,13 @@ A camper can register for a week of Palabra de Vida with help from a parent, gua
 
 ## Pilot defaults
 
+### Scholarship expiration and camper cost
+
+- New code allocations require an expiration date, not earlier than the current date in Panama. Redemption is allowed through the end of that date in Panama and rejected afterward by the redemption transaction. Expiration affects unused codes only; already applied scholarship values remain in camper finance. Existing batches without a recorded expiration are preserved without an inferred deadline.
+- Allocate codes retains Value per award and displays a calculated Cost per camper: regular configured camp fee minus award, clamped to zero. This is not an editable fee or balance override. Missing camp fees are shown as unavailable, never assumed to be zero. Early-bird pricing, payments or other adjustments can change the eventual balance.
+- Week-specific awards display that week's camper cost. Any-week awards display the cost for each currently eligible week because fees may differ. New batches snapshot those regular fees so later setup changes do not silently rewrite their quoted costs. Legacy batches without a snapshot use the currently configured fee; newly added weeks are not silently added to an older quote.
+- Distributor email drafts contain available codes, camper costs, expiration date (inclusive, Panama), instructions and the regular-fee calculation explanation. Do not send award amounts in place of camper costs. Unknown costs are explicitly labeled unavailable. Expired unused codes are listed separately and excluded from email drafts. They continue to count against the original allocation limit; expiration does not automatically issue replacement awards.
+
 - A pending permission or paperwork item stays visible on the confirmed roster. Staff can set or change a follow-up date. The date is a reminder. Camp Registration can decide whether to keep or manually release a place and record the outcome.
 - Participation permission remains required before joining activities. Explicit data authorization, the weekly limit, and the agreed safety rules still apply.
 

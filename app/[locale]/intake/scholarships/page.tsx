@@ -1,3 +1,7 @@
+import {AwardFields} from './award-fields';
+import {scholarshipEmail} from '../../../../lib/scholarship-email';
+import {camperCost,type ScholarshipFee} from '../../../../lib/scholarship-pricing';
+import {panamaDate} from '../../../../lib/registration';
 import { AppForm } from "../../app-form";
 import Link from "../../app-link";
 import { WeekSelector } from "../../week-selector";
@@ -10,10 +14,10 @@ import { formatMoney, reviewCopy } from "../../../../lib/review-copy";
 import { manageScholarships } from "../../review-actions";
 import { requireReview, ReviewFrame } from "../review-frame";
 
-type Week = CampWeekOption & { award_limit:number; season_year:number|null };
+type Week = CampWeekOption & { award_limit:number; season_year:number|null; fee_cents:number|null };
 type Code = {
   batch_id:string; code:string; distributor:string; distributor_role:typeof scholarshipDistributorRoles[number]; issued_at:Date;
-  distributor_email:string|null; instructions:string|null;
+  distributor_email:string|null; instructions:string|null; expires_on:string|null; fee_snapshot:ScholarshipFee[]|null;
   value_cents:number; redeemed_at:Date|null; camper:string|null; redeemed_week:string|null;
 };
 
@@ -23,31 +27,34 @@ export default async function Page({ params, searchParams }: {
   const { locale, role } = await requireReview((await params).locale);
   const { status, week:requested, scope, batch:issuedBatch } = await searchParams;
   const db = await getDatabase();
-  const weeks = (await db.query<Week>("SELECT id,name,starts_on::text AS start,ends_on::text AS end,award_limit,EXTRACT(YEAR FROM starts_on)::integer AS season_year FROM camp_week ORDER BY id")).rows;
+  const weeks = (await db.query<Week>("SELECT id,name,starts_on::text AS start,ends_on::text AS end,award_limit,fee_cents,EXTRACT(YEAR FROM starts_on)::integer AS season_year FROM camp_week ORDER BY id")).rows;
   const week = weeks.find(item => String(item.id) === requested) ?? weeks[0];
   const t = reviewCopy[locale], s = scholarshipCopy[locale];
   const season = scope === "season" ? week?.season_year : null;
+  const today=panamaDate();
+  const fees:ScholarshipFee[]=weeks.filter(w=>season?w.season_year===season:w.id===week?.id).map(w=>({week:w.id,name:w.name,fee:w.fee_cents}));
   const scopeName = season ? s.seasonName(season) : week?.name ?? "";
   const scopeLink = "/"+locale+"/intake/scholarships?week="+week?.id;
   const limit = season ? (await db.query<{award_limit:number}>(
     "SELECT award_limit FROM scholarship_season WHERE year=$1",[season],
   )).rows[0]?.award_limit ?? 0 : week?.award_limit ?? 0;
   const codes = week ? (await db.query<Code>(
-    `SELECT c.batch_id,c.code,b.distributor,b.distributor_role,b.distributor_email,b.instructions,b.issued_at,
+    `SELECT c.batch_id,c.code,b.distributor,b.distributor_role,b.distributor_email,b.instructions,b.expires_on::text,b.fee_snapshot,b.issued_at,
        c.value_cents,c.redeemed_at,r.first_name || ' ' || r.last_name AS camper,w.name AS redeemed_week
      FROM scholarship_code c JOIN scholarship_batch b ON b.id=c.batch_id
      LEFT JOIN registration r ON r.id=c.registration_id LEFT JOIN camp_week w ON w.id=r.week_id
      WHERE b.week_id=$1 OR b.season_year=$2 ORDER BY b.issued_at DESC,b.id,c.redeemed_at DESC NULLS LAST`,
     [season ? null : week.id,season ?? null],
   )).rows : [];
-  const batches = new Map<string,{issued:Code;available:Code[];redeemed:Code[]}>();
+  const batches = new Map<string,{issued:Code;available:Code[];redeemed:Code[];expired:Code[]}>();
   for (const code of codes) {
     let batch = batches.get(code.batch_id);
     if (!batch) {
-      batch = {issued:code,available:[],redeemed:[]};
+      batch = {issued:code,available:[],redeemed:[],expired:[]};
       batches.set(code.batch_id,batch);
     }
     if (code.redeemed_at) batch.redeemed.push(code);
+    else if(code.expires_on&&code.expires_on<today)batch.expired.push(code);
     else batch.available.push(code);
   }
   const date = new Intl.DateTimeFormat(locale === "es" ? "es-PA" : "en-US", {
@@ -56,9 +63,7 @@ export default async function Page({ params, searchParams }: {
   const remaining = Math.max(0,limit-codes.length);
   function emailDraft(issued:Code,available:Code[]) {
     if (!issued.distributor_email || !available.length) return null;
-    const body = [s.greeting(issued.distributor),s.intro(scopeName),
-      issued.instructions,available.map(code=>code.code+" · "+formatMoney(code.value_cents,locale)).join("\r\n")]
-      .filter(Boolean).join("\r\n\r\n");
+    const body = scholarshipEmail(locale,scopeName,issued,available,fees);
     const recipient = encodeURIComponent(issued.distributor_email).replace("%40","@");
     const draft = "mailto:"+recipient+"?subject="+encodeURIComponent(s.subject);
     const fullDraft = draft+"&body="+encodeURIComponent(body);
@@ -102,17 +107,23 @@ export default async function Page({ params, searchParams }: {
             <label>{t.distributor}<input name="distributor" maxLength={100} required /></label>
             <label>{t.distributorRole}<select name="distributorRole" defaultValue="" required><option value="">—</option>{scholarshipDistributorRoles.map(role => <option value={role} key={role}>{t[role]}</option>)}</select></label>
             <label>{t.count}<input name="count" type="number" min="1" max={Math.min(remaining,999)} required /></label>
-            <label>{t.value}<input name="value" inputMode="decimal" required /></label>
+            <AwardFields locale={locale} fees={fees} />
+            <label>{s.expiration}<input type="date" name="expiresOn" min={today} required /></label>
             <label>{t.actor}<input name="actor" maxLength={100} required /></label>
             <label>{s.email}<input name="email" type="email" maxLength={254} /></label>
           </div>
+          <p className="muted">{fees.map((f,index)=><span key={f.week}>{index?' · ':''}{fees.length>1?f.name+' · ':''}{s.campFee}: {f.fee===null?t.noFee:formatMoney(f.fee,locale)}</span>)}</p>
+          <p className="muted">{s.costHelp}</p>
+          <p className="muted">{s.expirationHelp}</p>
           <label>{s.instructions}<textarea name="instructions" maxLength={1000} rows={3} /></label>
           <button>{t.issue}</button>
         </AppForm>}
       </section>
-      {[...batches.values()].map(({issued,available,redeemed}) => <section className="card" key={issued.batch_id} id={"batch-"+issued.batch_id}>
+      {[...batches.values()].map(({issued,available,redeemed,expired}) => <section className="card" key={issued.batch_id} id={"batch-"+issued.batch_id}>
         <h2>{issued.distributor} ({t[issued.distributor_role]})</h2>
         <p className="muted">{t.issuedOn} {date.format(issued.issued_at)}</p>
+        <p>{s.expiration}: {issued.expires_on??s.noExpiration}</p>
+        <div>{(issued.fee_snapshot??fees).map(f=>{const amount=camperCost(f.fee,issued.value_cents);return <p key={f.week}>{(issued.fee_snapshot??fees).length>1?f.name+' · ':''}{s.camperCost}: {amount===null?s.costUnknown:formatMoney(amount,locale)}</p>;})}</div>
         {issued.distributor_email && <p>{issued.distributor_email}</p>}
         {issued.instructions && <p className="scholarship-instructions">{issued.instructions}</p>}
         {emailDraft(issued,available)}
@@ -120,6 +131,7 @@ export default async function Page({ params, searchParams }: {
         {available.length > 0 && <ul>{available.map(code => <li key={code.code}>
           <code>{code.code}</code> · {formatMoney(code.value_cents,locale)}
         </li>)}</ul>}
+        {expired.length>0&&<details><summary>{s.expired} ({expired.length})</summary><ul>{expired.map(code=><li key={code.code}><code>{code.code}</code></li>)}</ul></details>}
         {redeemed.length > 0 ? <details>
           <summary>{t.redeemedCodes} ({redeemed.length})</summary>
           <ul>{redeemed.map(code => <li key={code.code}>

@@ -24,7 +24,7 @@ test('staff application APIs protect reference confidentiality, review actions, 
     const api=await import('../app/api/staff-applications/route.ts'),refs=await import('../app/api/staff-applications/reference/route.ts'),docs=await import('../app/api/staff-applications/[id]/documents/route.ts');
     const request=(body:unknown)=>new Request('http://localhost/api/staff-applications',{method:'POST',headers:{origin:'http://localhost','content-type':'application/json'},body:JSON.stringify(body)});
     const initial={first:'Fictional',last:'Counselor',birth:'2010-01-01',gender:'female',email:'fictional@example.test',phone:'DEMO INITIAL PHONE',address:'Fictional initial address',dataSigner:'Fictional Guardian',dataAuthority:'self',sharing:'yes',medication:'PRIVATE_INITIAL_HEALTH',governmentId:'DO_NOT_STORE'};
-    assert.equal((await api.POST(request({op:'start',season:2027,role:'equipante',data:initial}))).status,400);
+    const wrongAuthority=await api.POST(request({op:'start',season:2027,role:'equipante',data:initial}));assert.equal(wrongAuthority.status,400);assert.ok((await wrongAuthority.json()).problems.includes('dataAuthority'));
     const created=await api.POST(request({op:'start',season:2027,role:'equipante',data:{...initial,dataAuthority:'guardian'}}));assert.equal(created.status,201);
     const {id,key}=await created.json();const get=()=>api.GET(new Request('http://localhost/api/staff-applications?'+new URLSearchParams({id,key})));
     let record=await (await get()).json();assert.equal(record.data.medication,undefined);assert.equal(record.data.governmentId,undefined);assert.equal(record.resume_hash,undefined);

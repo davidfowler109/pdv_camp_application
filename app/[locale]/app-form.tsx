@@ -28,6 +28,7 @@ export function AppForm({children,busy=false,onSubmit,...props}:ComponentProps<"
   return <form {...props} onSubmit={event=>{
     if(guard.current||busy||navigation){event.preventDefault();return;}
     onSubmit?.(event);
+    if(event.defaultPrevented)return;
     // Capture native GET data before disabling fields, preserving normal GET semantics.
     if(!event.defaultPrevented && typeof props.action!=="function" && event.currentTarget.method.toLowerCase()==="get"){
       const form=event.currentTarget,url=new URL(form.action);

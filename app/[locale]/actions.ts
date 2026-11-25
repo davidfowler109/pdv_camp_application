@@ -7,6 +7,7 @@ import { getDatabase } from "../../lib/database";
 import { isLocale, type Locale } from "../../lib/copy";
 import { endOfCampBlock, lockFacilityRooms, roomConflict } from "../../lib/facilities";
 import { dateParts } from "../../lib/registration";
+import type {DormSaveResult,DormSaveStatus} from "../../lib/dorm-save";
 import { camperBedCapacity, hasCabinTeam, integer } from "../../lib/housing";
 import { allocatedCount, confirmedCount, lockWeek, moneyCents } from "../../lib/review";
 import { currentRole, isRole, setSession, validDemoPassword } from "../../lib/session";
@@ -46,9 +47,10 @@ export async function changeLanguage(form: FormData) {
   if (section === "church-visits/itinerary" && dateParts(string(form,"day"))) query.set("day",string(form,"day"));
   const visitor = string(form,"visitor");
   if (section === "church-visits/visitors" && /^[a-f0-9-]{36}$/i.test(visitor)) query.set("visitor",visitor);
+  if (section.startsWith("overview") && /^(?:20\d\d|undated)$/.test(string(form,"season"))) query.set("season",string(form,"season"));
   const from = string(form,"from");
   if (from) query.set("from",from.slice(0,500));
-  redirect("/" + locale + (/^(?:register|transport|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
+  redirect("/" + locale + (/^(?:overview(?:\/review)?|register|transport|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
 }
 
 export async function login(form: FormData) {
@@ -106,8 +108,8 @@ export async function saveWeek(form: FormData) {
   finish(form, updated === "facilityConflict" ? updated : updated ? "saved" : "invalid");
 }
 
-export async function saveDorm(form: FormData) {
-  if (await currentRole() !== "leadership") finish(form, "denied");
+export async function saveDormResult(form: FormData):Promise<DormSaveResult> {
+  if (await currentRole() !== "leadership") return {status:"denied",problems:[]};
   const week = integer(form.get("week"), 1, 2147483647);
   const dorm = integer(form.get("dorm"), 1, 2147483647);
   const override = string(form, "usable");
@@ -120,11 +122,16 @@ export async function saveDorm(form: FormData) {
   const assignments = form.getAll("staff").map(value => {
     const [role,id,...rest] = typeof value === "string" ? value.split(":") : [];
     const staffId = integer(id ?? null,1,2147483647);
-    return !rest.length && staffId && (role === "guide" || role === "equipante") ? {id:staffId,role} : null;
+    return !rest.length && staffId && role === "guide" ? {id:staffId,role} : null;
   });
   const staff = assignments.flatMap(assignment => assignment ? [assignment] : []);
-  if (!week || !dorm || (override && usable === null) || guests === null || min === null || (max === null && !openEnded) ||
-      (group !== "female" && group !== "male") || staff.length !== assignments.length || new Set(staff.map(item => item.id)).size !== staff.length) finish(form, "invalid");
+  const problems:string[]=[];
+  if(!week||!dorm)return {status:'invalid',problems:[]};
+  if(override&&usable===null)problems.push('usable');if(guests===null)problems.push('guests');if(min===null)problems.push('min');if(max===null&&!openEnded)problems.push('max');
+  if(group!=='female'&&group!=='male')problems.push('group');
+  if(staff.length!==assignments.length||new Set(staff.map(item=>item.id)).size!==staff.length)problems.push('staff');
+  if(problems.length)return {status:'invalid',problems};
+  try {
 
   const db = await getDatabase();
   const saved = await db.transaction(async tx => {
@@ -133,7 +140,8 @@ export async function saveDorm(form: FormData) {
     const { rows } = await tx.query<{ physical_beds:number; default_beds:number; active:boolean }>(
       "SELECT physical_beds,COALESCE(default_usable_beds,physical_beds) AS default_beds,active FROM dorm WHERE id=$1 AND room_kind='camper' FOR UPDATE", [dorm],
     );
-    if (!rows.length || (usable !== null && usable > rows[0].physical_beds) || guests > (usable ?? rows[0].default_beds)) return false;
+    if (!rows.length) return false;
+    if((usable !== null && usable > rows[0].physical_beds) || guests! > (usable ?? rows[0].default_beds)) return 'bedCapacity' as const;
     if (rows[0].active && form.has("active")) {
       const dates = (await tx.query<{start:string|null;end:string|null}>(
         "SELECT starts_on::text AS start,ends_on::text AS end FROM camp_week WHERE id=$1",[week],
@@ -150,16 +158,14 @@ export async function saveDorm(form: FormData) {
       const member = team.find(person => person.id === item.id)!;
       return (item.role === "guide" && !member.adult) ||
         (item.role !== member.previous_role && (!member.active || !member.skills.includes(item.role)));
-    })) return false;
+    })) return "staffInvalid" as const;
     const availabilityMap=await staffAvailability(tx,week,ids);
-    if(staff.some(item=>team.find(person=>person.id===item.id)?.previous_role!==item.role&&!staffRoleEligible(availabilityMap.get(item.id),item.role,team.find(person=>person.id===item.id)!.adult)))return false;
+    if(staff.some(item=>team.find(person=>person.id===item.id)?.previous_role!==item.role&&!staffRoleEligible(availabilityMap.get(item.id),item.role,team.find(person=>person.id===item.id)!.adult)))return "staffInvalid" as const;
     const exceptions=staff.filter(item=>team.find(person=>person.id===item.id)?.previous_role!==item.role&&availabilityMap.get(item.id)?.state!=='available').map(item=>({availability:availabilityMap.get(item.id)!,role:item.role}));
     const availabilityOverride={confirmed:form.has('overrideConfirmed'),reason:string(form,'overrideReason')};
     if(exceptions.length&&!availabilityOverrideValid(availabilityOverride))return 'availabilityRequired' as const;
-    if ((await tx.query("SELECT 1 FROM weekly_dorm_staff WHERE week_id=$1 AND dorm_id<>$2 AND staff_id=ANY($3::integer[]) LIMIT 1",[week,dorm,ids])).rows.length) return false;
+    if ((await tx.query("SELECT 1 FROM weekly_dorm_staff WHERE week_id=$1 AND dorm_id<>$2 AND staff_id=ANY($3::integer[]) LIMIT 1",[week,dorm,ids])).rows.length) return "staffConflict" as const;
     const guides = staff.filter(item => item.role === "guide").length;
-    const counselors = staff.filter(item => item.role === "equipante").length;
-    if (counselors > 3) return false;
     const { rows: occupied } = await tx.query<{count:number; group_conflict:boolean}>(
       `SELECT count(*)::integer AS count,COALESCE(bool_or(r.gender_group<>$3),false) AS group_conflict
        FROM camper_placement p JOIN registration r ON r.id=p.registration_id
@@ -167,8 +173,8 @@ export async function saveDorm(form: FormData) {
     );
     if (occupied[0].group_conflict) return "groupConflict" as const;
     // Existing placements must remain within capacity when their team changes.
-    if (occupied[0].count && (!form.has("active") || !hasCabinTeam(guides,counselors,campWeek.minimum_age < 18) ||
-        occupied[0].count > camperBedCapacity(usable ?? rows[0].default_beds,guests,guides))) return false;
+    if (occupied[0].count && (!form.has("active") || !hasCabinTeam(guides))) return 'occupiedTeam' as const;
+    if (occupied[0].count > camperBedCapacity(usable ?? rows[0].default_beds,guests!,guides)) return 'bedCapacity' as const;
     await tx.query(
       `INSERT INTO weekly_dorm(week_id,dorm_id,minimum_age,maximum_age,usable_beds,guest_beds,gender_group,in_service)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8)
@@ -181,11 +187,36 @@ export async function saveDorm(form: FormData) {
     await recordAvailabilityOverrides(tx,week,exceptions,availabilityOverride,dorm);
     return true;
   });
-  finish(form, saved === "availabilityRequired" ? saved : saved === "groupConflict" || saved === "facilityConflict" ? saved : saved ? "saved" : "invalid");
+  const status:DormSaveStatus=saved===true?'saved':saved===false?'invalid':saved;
+  const fields=status==='availabilityRequired'?[...(!form.has('overrideConfirmed')?['overrideConfirmed']:[]),...(!string(form,'overrideReason')?['overrideReason']:[])]:status==='staffInvalid'||status==='staffConflict'?['staff']:status==='occupiedTeam'?['staff','active']:status==='bedCapacity'?['usable','guests']:status==='groupConflict'?['group']:[];
+  return {status,problems:fields};
+  }catch{return {status:'unavailable',problems:[]};}
 }
 
-function housingResult(form: FormData, status: "saved"|"invalid"|"unavailable"|"facilityConflict"): never {
+export async function saveDorm(form:FormData) {
+  const result=await saveDormResult(form);
+  const status=result.status;
+  finish(form,['saved','denied','unavailable','availabilityRequired','groupConflict','facilityConflict'].includes(status)?status as 'saved'|'denied'|'unavailable'|'availabilityRequired'|'groupConflict'|'facilityConflict':'invalid');
+}
+
+function housingResult(form: FormData, status: "saved"|"invalid"|"unavailable"|"facilityConflict"|"deleted"|"roomInUse"|"denied"): never {
   redirect("/" + localeOf(form) + "/housing?status=" + status);
+}
+
+export async function deleteRoom(form: FormData) {
+  if (await currentRole() !== "leadership") housingResult(form,"denied");
+  const id = integer(form.get("dorm"),1,2147483647);
+  if (!id || form.get("confirmDelete") !== "yes") housingResult(form,"invalid");
+  let deleted = false;
+  try {
+    const db = await getDatabase();
+    // Foreign keys protect all weekly setup, reservations, assignments and history,
+    // including references added concurrently. Never cascade room deletion.
+    deleted = (await db.query("DELETE FROM dorm WHERE id=$1 RETURNING id",[id])).rows.length > 0;
+  } catch (error) {
+    housingResult(form,(error as {code?:string}).code === "23503" ? "roomInUse" : "unavailable");
+  }
+  housingResult(form,deleted ? "deleted" : "invalid");
 }
 
 export async function saveRoom(form: FormData) {

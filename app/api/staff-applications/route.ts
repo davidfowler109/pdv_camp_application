@@ -38,8 +38,18 @@ export async function POST(request:Request){
     if(body.op==='start'){
       const data=cleanApplicationData(body.data),season=Number(body.season),role=body.role;
       const age=data?ageOn(data.birth,panamaDate()):null;
-      if(!data||!data.first||!data.last||data.first.length+data.last.length>98||!data.email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)||!data.dataSigner||data.sharing!=='yes'||age===null||age<0||age>110||data.dataAuthority!==(age<18?'guardian':'self')||!applicationRoles.includes(role)||!Number.isInteger(season)||season<2020||season>2100||!(await applicationWeeks(db,season)).length)return reply({status:'invalid'},400);
-      if(data.gender&&!['female','male'].includes(data.gender))return reply({status:'invalid'},400);
+      if(!data)return reply({status:'invalid'},400);
+      const problems:string[]=[];
+      for(const key of ['first','last','dataSigner'])if(!data[key])problems.push(key);
+      if((data.first?.length??0)+(data.last?.length??0)>98)problems.push('name');
+      if(!data.email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))problems.push('email');
+      if(data.sharing!=='yes')problems.push('sharing');
+      if(age===null||age<0||age>110)problems.push('birth');
+      if(age!==null&&data.dataAuthority!==(age<18?'guardian':'self'))problems.push('dataAuthority');
+      if(!applicationRoles.includes(role))problems.push('role');
+      if(!Number.isInteger(season)||season<2020||season>2100||!(await applicationWeeks(db,season)).length)problems.push('season');
+      if(data.gender&&!['female','male'].includes(data.gender))problems.push('gender');
+      if(problems.length)return reply({status:'invalid',problems},400);
       const initial=Object.fromEntries(['first','last','birth','gender','email','phone','address','dataSigner','dataAuthority','sharing'].filter(key=>data[key]!==undefined).map(key=>[key,data[key]]));
       const token=newApplicationToken(),id=randomUUID();
       await db.transaction(async tx=>{

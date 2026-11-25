@@ -2,15 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { availability, camperBedCapacity, integer } from "../lib/housing.ts";
 
-test("placement requires two adult leaders and counselors for weeks serving minors", () => {
-  assert.equal(availability(false, 5, 2, 1, true), "closed");
-  assert.equal(availability(true, 5, 1, 3, true), "noTeam");
-  assert.equal(availability(true, 5, 1, 0, false), "noTeam");
-  assert.equal(availability(true, 5, 2, 0, true), "noTeam");
-  assert.equal(availability(true, 5, 2, 4, true), "noTeam");
-  assert.equal(availability(true, 0, 2, 1, true), "noBeds");
-  assert.equal(availability(true, 5, 2, 3, true), "ready");
-  assert.equal(availability(true, 5, 2, 0, false), "ready");
+test("placement requires two adult Cabin Leaders without any counselor requirement", () => {
+  assert.equal(availability(false, 5, 2), "closed");
+  assert.equal(availability(true, 5, 0), "noTeam");
+  assert.equal(availability(true, 5, 1), "noTeam");
+  assert.equal(availability(true, 0, 2), "noBeds");
+  assert.equal(availability(true, 5, 2), "ready");
+  assert.equal(availability(true, 5, 3), "ready");
 });
 
 test("only adult cabin leaders and guests use cabin beds", () => {

@@ -14,11 +14,12 @@ test('bilingual assignment and staff review forms honor availability and role-sp
  const db=new PGlite(),globals=globalThis as unknown as {availabilityRenderDb?:PGlite};globals.availabilityRenderDb=db;
  const hook=registerHooks({resolve(specifier,context,next){
   if(context.parentURL?.startsWith('availability-render:'))return next(specifier,{...context,parentURL:new URL('../package.json',import.meta.url).href});
-  if(['next/navigation','next/link','next/image','next/headers'].includes(specifier))return {url:'availability-render:'+specifier,shortCircuit:true};
+  if(['next/navigation','next/link','next/image','next/headers','next/cache'].includes(specifier))return {url:'availability-render:'+specifier,shortCircuit:true};
   if(specifier.startsWith('.')&&!/\.[a-z]+$/i.test(specifier)){for(const ext of ['.ts','.tsx']){const candidate=new URL(specifier+ext,context.parentURL);if(existsSync(fileURLToPath(candidate)))return next(candidate.href,context);}}return next(specifier,context);
  },load(url,context,next){
   const stub=(source:string)=>({format:'module' as const,shortCircuit:true,source});
   if(url==='availability-render:next/navigation')return stub('export const useRouter=()=>({refresh(){}});export function redirect(url){throw Error(url);}export function notFound(){throw Error("Not found");}');
+  if(url==='availability-render:next/cache')return stub('export function revalidatePath(){}');
   if(url==='availability-render:next/headers')return stub('export const cookies=async()=>({set(){}});');
   if(url==='availability-render:next/link')return stub('import React from "react";export const useLinkStatus=()=>({pending:false});export default function Link({children,onNavigate,...props}){return React.createElement("a",props,children);}');
   if(url==='availability-render:next/image')return stub('import React from "react";export default function Image(props){return React.createElement("img",props);}');
@@ -37,13 +38,56 @@ test('bilingual assignment and staff review forms honor availability and role-sp
   const building=(await db.query<{id:number}>("INSERT INTO building(name) VALUES('Fixture building') RETURNING id")).rows[0].id;
   await db.query("INSERT INTO dorm(building_id,name,physical_beds) VALUES($1,'Fixture cabin',16)",[building]);
   const {default:StaffPage}=await import('../app/[locale]/staff/page.tsx'),{default:WeekPage}=await import('../app/[locale]/page.tsx');
+  for(const [name,status,arrived] of [['OverviewArrived','confirmed',true],['OverviewReleased','released',true],['OverviewExpected','confirmed',false]] as const){
+   const id=randomUUID();await db.query("INSERT INTO registration(id,week_id,first_name,last_name,date_of_birth,gender_group,intake_channel,participation,notice_version,authorized_on,signer_role,signer_name,details,place_status) VALUES($1,$2,$3,'Fixture','2017-01-01','male','online','granted','pilot-2','2026-11-14','guardian','Sample guardian','{}',$4)",[id,week,name,status]);
+   if(arrived)await db.query("INSERT INTO camper_arrival(registration_id,arrival_method,recorded_by) VALUES($1,'own','Sample staff')",[id]);
+  }
+  const {reviewTarget,emptyReview,saveReview}=await import('../lib/camp-reviews.ts');
+  const reviewTargetWeek=reviewTarget(String(week),undefined)!,reviewBody=emptyReview(reviewTargetWeek).body;
+  reviewBody.notes=[{id:randomUUID(),date:'2027-01-13',kind:'worked',text:'Fictional daily arrival observation',author:'Fictional leader'}];
+  reviewBody.summary.worked='Fictional closing lesson from arrival';reviewBody.actions=[{id:randomUUID(),text:'Reuse fictional arrival signs',owner:'Sample owner',state:'open'}];
+  await db.transaction(tx=>saveReview(tx,reviewTargetWeek,{revision:0,operation:'review',actor:'Fictional reviewer',body:reviewBody}));
+  await db.query('UPDATE camp_week SET fee_cents=8000,award_limit=10 WHERE id=$1',[week]);
+  for(const [code,expires]of [['ABCD1234','2099-01-01'],['ABCD5678','2000-01-01']]){
+   const batch=randomUUID();await db.query("INSERT INTO scholarship_batch(id,week_id,distributor,distributor_role,issued_by,distributor_email,expires_on,fee_snapshot) VALUES($1,$2,'Fictional pastor','pastor','Fictional staff','sample@example.test',$3,$4::jsonb)",[batch,week,expires,JSON.stringify([{week,name:'Fixture week',fee:8000}])]);
+   await db.query('INSERT INTO scholarship_code(code,batch_id,value_cents) VALUES($1,$2,3000)',[code,batch]);
+  }
   for(const locale of ['en','es']){
    const props={params:Promise.resolve({locale}),searchParams:Promise.resolve({week:String(week)})};
    const html=renderToStaticMarkup(await StaffPage(props)),forms=html.match(/<form\b[\s\S]*?<\/form>/g)??[];
    const assignments=forms.filter(f=>f.includes('name="operation"')&&f.includes('value="assign"'));
    const normal=assignments.find(f=>!f.includes('name="overrideConfirmed"')),exception=assignments.find(f=>f.includes('name="overrideConfirmed"'));
    assert.ok(normal?.includes('Available fixture'));assert.ok(!normal?.includes('Unknown fixture'));assert.ok(!normal?.includes('Outside fixture'));assert.ok(exception?.includes('Unknown fixture'));assert.ok(exception?.includes('Outside fixture'));assert.ok(!exception?.includes('Available fixture'));
-   const weekHtml=renderToStaticMarkup(await WeekPage(props));const cabinForm=(weekHtml.match(/<form\b[\s\S]*?<\/form>/g)??[]).find(f=>f.includes('name="dorm"'));assert.ok(cabinForm);
+   const {default:HousingPage}=await import('../app/[locale]/housing/page.tsx');
+   const housingHtml=renderToStaticMarkup(await HousingPage(props));
+   assert.ok(housingHtml.includes(locale==='en'?'Delete room':'Eliminar habitación'));
+   assert.ok(housingHtml.includes('name="confirmDelete"'));assert.ok(/<input(?=[^>]*name="confirmDelete")(?=[^>]*required)[^>]*>/.test(housingHtml));
+   const weekHtml=renderToStaticMarkup(await WeekPage(props));const cabinForm=(weekHtml.match(/<form\b[\s\S]*?<\/form>/g)??[]).find(f=>f.includes('name="dorm"'));assert.ok(cabinForm);assert.ok(!cabinForm.includes('equipante:'));assert.ok(!weekHtml.includes(locale==='en'?'Camp Counselors':'Equipantes'));
+   const {default:Overview}=await import('../app/[locale]/overview/page.tsx');
+   const overviewHtml=renderToStaticMarkup(await Overview({...props,searchParams:Promise.resolve({season:'2027'})}));
+   assert.ok(overviewHtml.includes(locale==='en'?'Currently at camp':'Actualmente en el campamento'));assert.ok(overviewHtml.includes('attendance=atCamp'));assert.ok(overviewHtml.includes('place=active'));assert.ok(overviewHtml.includes('/overview/review?week='));assert.ok(overviewHtml.includes('/overview/review?season=2027'));
+   const {default:ReviewPage}=await import('../app/[locale]/overview/review/page.tsx');
+   const weeklyReviewHtml=renderToStaticMarkup(await ReviewPage({...props,searchParams:Promise.resolve({week:String(week)})}));
+   assert.ok(weeklyReviewHtml.includes('Fictional daily arrival observation'));assert.ok(weeklyReviewHtml.includes('Fictional closing lesson from arrival'));
+   const seasonReviewHtml=renderToStaticMarkup(await ReviewPage({...props,searchParams:Promise.resolve({season:'2027'})}));
+   assert.ok(seasonReviewHtml.includes('Fictional daily arrival observation'));assert.ok(seasonReviewHtml.includes('Fictional closing lesson from arrival'));assert.ok(seasonReviewHtml.includes('Reuse fictional arrival signs'));assert.ok(seasonReviewHtml.includes(locale==='en'?'Carry into season actions':'Llevar a las acciones de temporada'));
+   const {default:Intake}=await import('../app/[locale]/intake/page.tsx');
+   const intakeHtml=renderToStaticMarkup(await Intake({...props,searchParams:Promise.resolve({week:String(week),place:'confirmed'})}));
+   assert.ok(intakeHtml.includes('OverviewArrived'));assert.ok(intakeHtml.includes('OverviewExpected'));assert.ok(!intakeHtml.includes('OverviewReleased'));
+   const {default:Scholarships}=await import('../app/[locale]/intake/scholarships/page.tsx');
+   const scholarshipHtml=renderToStaticMarkup(await Scholarships(props));
+   assert.ok(scholarshipHtml.includes('name="expiresOn"'));assert.ok(scholarshipHtml.includes(locale==='en'?'Cost per camper':'Costo por campista'));
+   const drafts=scholarshipHtml.match(/href="mailto:[^"]+"/g)??[];assert.equal(drafts.length,1);assert.ok(drafts[0].includes('ABCD1234'));assert.ok(!drafts[0].includes('ABCD5678'));
+   const {formatMoney:scholarshipMoney}=await import('../lib/review-copy.ts');assert.ok(drafts[0].includes(encodeURIComponent(scholarshipMoney(5000,locale as 'en'|'es'))));assert.ok(!drafts[0].includes(encodeURIComponent(scholarshipMoney(3000,locale as 'en'|'es'))));
+   const {default:CheckIn}=await import('../app/[locale]/check-in/page.tsx');
+   const checkInHtml=renderToStaticMarkup(await CheckIn({...props,searchParams:Promise.resolve({week:String(week),attendance:'atCamp'})}));
+   assert.ok(checkInHtml.includes('name="attendance"'));assert.ok(checkInHtml.includes('OverviewArrived'));assert.ok(checkInHtml.includes('OverviewReleased'));assert.ok(!checkInHtml.includes('OverviewExpected'));
+   const {StaffApplicationForm}=await import('../app/[locale]/staff/apply/staff-application-form.tsx');
+   for(const initialRole of ['guide','equipante','volunteer']){
+    const applyHtml=renderToStaticMarkup(createElement(StaffApplicationForm,{locale:locale as 'en'|'es',weeks:[{id:week,name:'Fixture',start:'2027-01-12',end:'2027-01-16'}],seasons:[],initialRole}));
+    assert.ok(/<form[^>]*noValidate/i.test(applyHtml));assert.ok(applyHtml.includes('data-application-field="email"'));assert.ok(applyHtml.includes('data-application-field="gender"'));
+    assert.ok(!/name="sharing"[^>]*disabled/.test(applyHtml));
+   }
    const {ApplicationReview}=await import('../app/[locale]/staff/applications/review.tsx');
    const {staffApplicationText}=await import('../lib/staff-application-copy.ts');
    const t=(key:string)=>staffApplicationText(locale as 'en'|'es',key);

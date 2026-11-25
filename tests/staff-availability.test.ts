@@ -21,7 +21,7 @@ test('availability governs weekly and cabin assignments with confirmed audited e
   const second=(await db.query<{id:number}>("INSERT INTO camp_week(name,minimum_age,maximum_age,capacity,starts_on,ends_on) VALUES('Second',7,11,200,'2027-01-18','2027-01-23') RETURNING id")).rows[0].id;
   const nextYear=(await db.query<{id:number}>("INSERT INTO camp_week(name,minimum_age,maximum_age,capacity,starts_on,ends_on) VALUES('Next year',7,11,200,'2028-01-12','2028-01-16') RETURNING id")).rows[0].id;
   const member=async(name:string,skills:string[],adult=true)=>(await db.query<{id:number}>('INSERT INTO staff_member(name,adult,active,skills) VALUES($1,$2,true,$3::text[]) RETURNING id',[name,adult,skills])).rows[0].id;
-  const health=await member('Fictional health',['health']),direct=await member('Fictional direct',['program']),guide=await member('Fictional leader',['guide']),counselor=await member('Fictional counselor',['equipante'],false);
+  const health=await member('Fictional health',['health']),direct=await member('Fictional direct',['program']),guide=await member('Fictional leader',['guide']),secondGuide=await member('Fictional second leader',['guide']),counselor=await member('Fictional counselor',['equipante'],false);
   const app=randomUUID();await db.query("INSERT INTO staff_application(id,season,requested_role,status,data,staff_id,ready,resume_hash,resume_expires) VALUES($1,2027,'volunteer','approved',$2::jsonb,$3,false,'fixture','2099-01-01')",[app,JSON.stringify({weeks:String(first)}),health]);
   const read=async(week:number,id:number)=>(await staffAvailability(db,week,[id])).get(id)!;
   const override={confirmed:true,reason:'Confirmed directly with this fictional staff member'};
@@ -57,14 +57,39 @@ test('availability governs weekly and cabin assignments with confirmed audited e
   const actions=await import('../app/[locale]/actions.ts'),staffActions=await import('../app/[locale]/staff/actions.ts');
   const building=(await db.query<{id:number}>("INSERT INTO building(name) VALUES('Fixture building') RETURNING id")).rows[0].id;
   const dorm=(await db.query<{id:number}>("INSERT INTO dorm(building_id,name,physical_beds) VALUES($1,'Fixture cabin',16) RETURNING id",[building])).rows[0].id;
-  const form=(extra:Record<string,string>={})=>{const f=new FormData();for(const [key,value]of Object.entries({locale:'en',week:String(first),dorm:String(dorm),usable:'16',guests:'0',min:'7',max:'11',group:'male',active:'on',...extra}))f.set(key,value);f.append('staff','guide:'+guide);f.append('staff','equipante:'+counselor);return f;};
+  const form=(extra:Record<string,string>={})=>{const f=new FormData();for(const [key,value]of Object.entries({locale:'en',week:String(first),dorm:String(dorm),usable:'16',guests:'0',min:'7',max:'11',group:'male',active:'on',...extra}))f.set(key,value);f.append('staff','guide:'+guide);f.append('staff','guide:'+secondGuide);return f;};
   const redirected=async(run:()=>Promise<unknown>)=>{try{await run();assert.fail('Expected redirect');}catch(error){assert.ok((error as {url?:string}).url);return (error as {url:string}).url;}};
+  await t.test('cabin saves return actionable field errors without writing partial assignments',async()=>{
+   assert.deepEqual(await actions.saveDormResult(form({group:''})),{status:'invalid',problems:['group']});
+   assert.deepEqual(await actions.saveDormResult(form({min:'12',max:'11'})),{status:'invalid',problems:['max']});
+   assert.deepEqual(await actions.saveDormResult(form()),{status:'availabilityRequired',problems:['overrideConfirmed','overrideReason']});
+   assert.equal((await db.query('SELECT 1 FROM weekly_dorm')).rows.length,0);
+  });
   await t.test('cabin assignment enforces availability atomically and records each confirmed exception',async()=>{
    assert.ok((await redirected(()=>actions.saveDorm(form()))).includes('availabilityRequired'));assert.equal((await db.query('SELECT 1 FROM weekly_dorm')).rows.length,0);
    assert.ok((await redirected(()=>actions.saveDorm(form({overrideConfirmed:'on',overrideReason:override.reason})))).includes('status=saved'));
    assert.equal((await db.query('SELECT 1 FROM weekly_dorm_staff WHERE week_id=$1 AND dorm_id=$2',[first,dorm])).rows.length,2);
    const events=(await db.query<{dorm_id:number;reason:string}>("SELECT dorm_id,reason FROM staff_availability_event WHERE operation='assignmentOverride' AND dorm_id=$1",[dorm])).rows;assert.equal(events.length,2);assert.ok(events.every(event=>event.reason===override.reason));
    assert.ok((await redirected(()=>actions.saveDorm(form()))).includes('status=saved'));assert.equal((await db.query("SELECT 1 FROM staff_availability_event WHERE operation='assignmentOverride' AND dorm_id=$1",[dorm])).rows.length,2);
+   assert.deepEqual(await actions.saveDormResult(form()),{status:'saved',problems:[]});
+  });
+  await t.test('minor camper placement is available with two adult leaders and no counselors',async()=>{
+   const {placementOptions}=await import('../lib/check-in.ts');
+   const options=await placementOptions(db,first,9,'male',null);assert.equal(options.length,1);assert.equal(options[0].beds,14);
+   const camper=randomUUID();
+   await db.query("INSERT INTO registration(id,week_id,first_name,last_name,date_of_birth,gender_group,intake_channel,participation,notice_version,authorized_on,signer_role,signer_name,details) VALUES($1,$2,'Fictional','Camper','2017-01-01','male','online','granted','pilot-2','2026-11-14','guardian','Sample guardian','{}')",[camper,first]);
+   await db.query("INSERT INTO camper_arrival(registration_id,arrival_method,recorded_by) VALUES($1,'own','Sample staff')",[camper]);
+   await db.query("INSERT INTO camper_placement(registration_id,week_id,dorm_id) VALUES($1,$2,$3)",[camper,first,dorm]);
+   const one=form();one.delete('staff');one.append('staff','guide:'+guide);
+   assert.ok((await redirected(()=>actions.saveDorm(one))).includes('status=invalid'));
+   assert.equal((await actions.saveDormResult(one)).status,'occupiedTeam');
+   assert.ok((await redirected(()=>actions.saveDorm(form()))).includes('status=saved'));
+   assert.equal((await placementOptions(db,first,9,'male',null))[0].beds,13);
+  });
+  await t.test('camper cabins reject counselor assignments even with an availability override',async()=>{
+   const invalid=form({overrideConfirmed:'on',overrideReason:override.reason});invalid.append('staff','equipante:'+counselor);
+   assert.ok((await redirected(()=>actions.saveDorm(invalid))).includes('status=invalid'));
+   assert.equal((await db.query('SELECT 1 FROM weekly_dorm_staff WHERE dorm_id=$1',[dorm])).rows.length,2);
   });
   await t.test('availability exceptions do not bypass adult cabin leadership or authorization',async()=>{
    const minor=await member('Fictional minor',['guide'],false),invalid=form({overrideConfirmed:'on',overrideReason:override.reason});invalid.delete('staff');invalid.append('staff','guide:'+minor);

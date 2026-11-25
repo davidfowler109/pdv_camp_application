@@ -42,6 +42,14 @@ Camp bus arrangements are configured per week through **Week setup → Transport
 
 For a church leader's whole-trip estimate, open **Church visits → select visit → Itinerary & budget → Download trip planning Excel**. The bilingual workbook always uses expected attendance and contains Trip summary, In-country estimates, and Additional trip costs. Edit the blue count and price cells and add airfare or other expenses to recalculate the group's cost and suggested traveler contributions. Blank prices remain incomplete. Individual visitor information is excluded and spreadsheet edits are not imported into the application. The download requires Camp Leadership. Run npm install after this change to add the workbook export dependency; no database migration is required.
 
+## Scholarship expiration and camper costs
+
+Scholarship allocations now require an expiration date and show the calculated camper cost (regular camp fee minus award). Distributor emails include that cost and the expiration date; expired unused codes cannot be redeemed and are excluded from email drafts. Any-week costs are listed per week. Existing batch deadlines are preserved as unrecorded. Restart the local demo for migration `034-scholarship-expiration.sql`; apply it explicitly to hosted PostgreSQL before deployment.
+
+## Week and season reviews
+
+Camp overview now links to **Week review** on each week and **Season review** beside season totals for Camp Leadership. Collect dated observations during the week, use selected notes in the closing summary, and save notes, summaries and follow-up actions together. The season workspace brings each week's saved material together, with explicit copy/carry buttons. Marking Reviewed records an attendance snapshot; reopen to make changes. Restart the local demo for migration `033-camp-reviews.sql`; apply that migration explicitly to hosted PostgreSQL before deploying these pages. Reviews are for operational lessons, with sensitive individual details kept in their restricted records.
+
 ## Azure staging
 
 

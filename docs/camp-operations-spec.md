@@ -6,13 +6,15 @@
 ## 1. Set up a camp week
 
 - Maintain buildings and assignable dorms as editable inventory. Record physical bed capacity per dorm. Staff can take a dorm out of service and set fewer usable beds for a given week. Reserve one usable bed for each assigned adult Cabin Leader and each guest bed. Camp Counselors sleep together separately. The remainder is the dorm’s camper capacity, with a minimum of zero. Subtract existing camper placements when showing remaining beds during check-in.
-- Configure the eligible age and gender group for each camper dorm per week. Require at least two adult Cabin Leaders per cabin. Assign one to three Camp Counselors for weeks serving campers under 18. Counselors are optional for 18+ weeks. Only dorms with usable beds and the required team are available for camper assignment.
+- Configure the eligible age and gender group for each camper dorm per week. Require at least two adult Cabin Leaders per cabin. Camp Counselors stay together in separate housing and are not assigned to camper dorm teams or required for camper placement. Only dorms with usable beds and the required team are available for camper assignment.
 - Preserve historical occupancy and Cabin Leader teams when inventory or staffing changes for future weeks.
 
 ### Reusable inventory and turnover
 
 - Camp Leadership can add a dated camp week and select existing weeks for setup. Housing is managed separately. A building or room is created once and can be reused in every week.
-- Store physical beds, default usable beds, and in-service status in Housing. In Week setup, leave the usable-bed override blank to use the default, or enter a temporary count for that week. Configure age and gender grouping, guest beds, Cabin Leaders, and Camp Counselors per week.
+- Camp Leadership can permanently delete an unused camper dorm or hotel room after explicit confirmation. Database references from weekly setup, reservations, assignments and history prevent deletion, including concurrent new references; never cascade removal. For linked rooms, use Edit inventory to take the room out of service while preserving records. Deletion reports success or explains why the room is protected.
+- Store physical beds, default usable beds, and in-service status in Housing. In Week setup, leave the usable-bed override blank to use the default, or enter a temporary count for that week. Configure age and gender grouping, guest beds and adult Cabin Leaders per week.
+- Weekly cabin saves validate beside the edited cabin. A visible, focused error panel lists fields needing attention, including a missing Group, invalid age range or unconfirmed availability exception. It opens collapsed exception fields when the operator selects an error. Server checks return specific staffing, capacity and reservation-conflict messages without navigation or lost selections. Successful saves confirm locally and refresh the cabin's saved team and bed summary. Unoccupied cabins may save partial teams, but cannot accept campers without two adult Cabin Leaders. Existing camper supervision and capacity remain protected atomically.
 - Track current room readiness as Ready or Needs cleaning for both camper dorms and the Guest Hotel. Staff mark used rooms Needs cleaning and mark them Ready after preparing them. A room needing cleaning is unavailable for camper placement until ready. The pilot uses manual status updates. Departure-driven turnover and hotel booking are separate workflows.
 
 ### Guest Hotel and guest placements
@@ -28,7 +30,7 @@ Transportation setup — Configure each week's camp buses, routes, pickup and re
 
 - Use the [team walkthrough](pilot-walkthrough.html) as the arrival screen baseline. Camp Registration opens the expected bus roster and can look up campers across the week. Record actual arrival and bus, where applicable. Route unmatched arrivals to Camp Registration for follow-up.
 - Show participation permission and outstanding balance at a glance. Camp Registration can record presence while permission is pending. A designated adult supervises the camper until the authorized signer gives permission. An outstanding balance is tracked separately.
-- Suggest a dorm using age, gender, remaining beds, and required coverage. Show the Cabin Leaders and Camp Counselors. Camp Registration can change the suggested placement and records the reason. Enforce usable bed capacity and required coverage. When there is no suitable dorm, keep the camper visibly unassigned for staff follow-up.
+- Suggest a dorm using age, gender, remaining beds, and required coverage. Show the adult Cabin Leaders. Camp Registration can change the suggested placement and records the reason. Enforce usable bed capacity and required coverage. When there is no suitable dorm, keep the camper visibly unassigned for staff follow-up.
 - Enforce the camper’s registered gender group for suggestions and manual overrides. Week setup must reject any group change that conflicts with existing camper placements. Camp Leadership defines any future age exceptions before the app offers them.
 
 ## 3. Account for departure
@@ -37,12 +39,29 @@ Transportation setup — Configure each week's camp buses, routes, pickup and re
 - For pickup, staff verify the receiving adult against the authorized plan. For unexpected pickup, the Cabin Leader supervises the camper and Camp Leadership verifies and decides on release. For an emergency return home, staff confirm the destination and the person receiving a minor and record the handoff.
 - Provide a week-end reconciliation view of checked-in campers with no recorded departure and those still awaiting a camp-supervised handoff.
 
+## 4. Camp overview
+
+- Leadership and Registration can open Camp overview beside Week setup. Select a season by the camp week's start year; undated weeks are listed separately. Default to the current year if present, otherwise the next available year or latest past year. Show season registration, confirmed-place, remaining-place, capacity and released-registration totals, plus each week's counts and dates.
+- Registered excludes released registrations. Confirmed places consume capacity; pending registrations do not. Remaining capacity is clamped to zero. Attendance includes all valid arrivals, including registrations subsequently released, and excludes voided arrivals. Still expected counts confirmed campers without a valid arrival.
+- Arrived this week includes those who departed. Currently at camp means valid arrival without physical departure. Bus boarding remains at camp until the return bus departure is recorded. Pickup, return home and self-departure count when recorded. A pending destination handoff after bus departure does not count as still on site. Arrived equals Currently at camp plus Departed.
+- Use the current date in Panama and highlight all weeks whose start/end dates include today. Show an explicit message if no week is current. Past weeks with campers still counted on site show a departure-record follow-up warning. Counts reflect records at page load and refresh, rather than a live headcount or automatic completion.
+- Weekly registration and attendance counts link to matching roster filters, which remain visible and can be changed. No historical comparison, warehouse or inferred arrival/departure is introduced.
+
+## 5. Lightweight week and season reviews
+
+- Camp Leadership opens Week review from each overview row and Season review beside the selected season's totals. Registration and other roles cannot open or modify review notes. Undated weeks support a weekly review; seasonal rollups use dated weeks' start years.
+- During the week, collect dated operational observations with type (worked well, improve, idea), text and recorder. Save notes, four closing-summary answers and open/done actions with optional owners together in one explicit save. There is no autosave or separate partial save. Inline Remove is saved with the rest of the draft. Do not include individual health, safeguarding or screening details.
+- Closing review retains the original observations beside the summary. Use in summary explicitly copies an observation into the relevant summary answer, retaining date/author context. Staff write the final assessment themselves. Reviewed requires a recorder and at least one summary answer, records reviewer/date and an attendance snapshot, and locks edits until explicitly reopened.
+- Season review displays each week's latest saved observations, summary and actions, labeled In progress, Reviewed or No review saved yet. Unfinished weeks remain usable as clearly identified sources. Staff can explicitly copy notes/summary sections into the season summary or carry an open weekly action into an independent season action. Copied text includes its source week; changing a season action never changes the weekly action. Source panels stay current; the saved season narrative is not automatically rewritten when a source changes.
+- Current registration/attendance totals and the snapshot taken at completion are clearly distinguished. Later operational corrections do not rewrite completion snapshots. Reopening preserves the prior snapshot until the review is marked Reviewed again. No historical staff identity is inferred from shared pilot logins; the operator supplies their name, with individual authenticated attribution required before production.
+- Optimistic revision checks reject stale saves without discarding local entries. The API requires a leadership session and matching request origin. Reviewed records require reopening before editing or deletion. Draft reviews may be permanently deleted only after confirmation; unrelated operational records and the other scope's review remain intact. Revision tokens are never reused after deletion/recreation.
+
 ## Acceptance scenarios
 
 - Staff add a building and dorm and configure its capacity for a future week. Past camper placements and Cabin Leader teams still show the historical setup.
-- A dorm with fewer than two adult Cabin Leaders, no Camp Counselors in a week serving minors, or no usable beds remaining is unavailable for camper placement. When two staff attempt to assign the last bed, only one assignment succeeds.
+- A dorm with fewer than two adult Cabin Leaders or no usable beds remaining is unavailable for camper placement. When two staff attempt to assign the last bed, only one assignment succeeds.
 - A camper arrives on a different bus with permission pending. Staff find the camper across the week, record actual arrival, and see that supervised follow-up is needed before activities.
-- Staff can accept a suggestion or choose another available, compatible dorm and record why. The displayed Cabin Leaders and Camp Counselors match the chosen dorm.
+- Staff can accept a suggestion or choose another available, compatible dorm and record why. The displayed adult Cabin Leaders match the chosen dorm.
 - A single guest with a whole-room reservation uses a two-bed hotel room. Staff cannot place another guest there, and camper dorm suggestions never include that room.
 - Staff with hotel assignment permission alone can book a hotel room and cannot place a guest in a camper dorm. An authorized guest placement in a camper dorm reduces camper capacity.
 - A checked-in camper who has boarded a bus that has not departed remains visible in departure reconciliation. An authorized pickup is closed when the handoff is recorded.

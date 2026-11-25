@@ -18,7 +18,7 @@ import { staffApplicationText } from "../../../lib/staff-application-copy";
 type Staff = {id:number;name:string;adult:boolean;active:boolean;skills:string[];qualifications:string|null};
 type WeeklyRole = typeof weeklyStaffRoles[number];
 type Assignment = {id:number;name:string;assignment_role:WeeklyRole};
-type Cabin = {id:number;staff_id:number;name:string;building:string;staff:string;assignment_role:"guide"|"equipante"};
+type Cabin = {id:number;staff_id:number;name:string;building:string;staff:string;assignment_role:"guide"};
 
 function MemberForm({ locale, week, member }: {locale:Locale;week?:number;member?:Staff}) {
   const t = staffCopy[locale];
@@ -61,7 +61,7 @@ export default async function StaffPage({ params, searchParams }: {
       WHERE a.week_id=$1 ORDER BY lower(s.name),s.id`,[week.id]).then(result => result.rows),
     db.query<Cabin>(`SELECT d.id,d.name,b.name AS building,s.id AS staff_id,s.name AS staff,COALESCE(x.assignment_role,s.team_role) AS assignment_role
       FROM weekly_dorm_staff x JOIN staff_member s ON s.id=x.staff_id JOIN dorm d ON d.id=x.dorm_id JOIN building b ON b.id=d.building_id
-      WHERE x.week_id=$1 ORDER BY b.name,d.id,s.name,s.id`,[week.id]).then(result => result.rows),
+      WHERE x.week_id=$1 AND COALESCE(x.assignment_role,s.team_role)='guide' ORDER BY b.name,d.id,s.name,s.id`,[week.id]).then(result => result.rows),
   ]) : [[],[]];
   const a=staffAvailabilityCopy[locale];
   const availabilityMap=week?await staffAvailability(db,week.id):new Map<number,StaffAvailability>();
