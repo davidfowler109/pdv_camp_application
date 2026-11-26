@@ -1,3 +1,4 @@
+import { cabinPlanningCopy } from "../../lib/cabin-planning-copy";
 import { staffAvailability,staffRoleEligible,type StaffAvailability } from "../../lib/staff-availability";
 import { staffAvailabilityCopy } from "../../lib/staff-availability-copy";
 import { AvailabilityOverrideFields } from "./staff/availability-fields";
@@ -19,10 +20,10 @@ import { copy, isLocale, type Locale } from "../../lib/copy";
 import { getDatabase } from "../../lib/database";
 import { facilitiesCopy } from "../../lib/facilities-copy";
 import { housingCopy } from "../../lib/housing-copy";
-import { availability, camperBedCapacity } from "../../lib/housing";
+import { availability, camperBedCapacity, integer } from "../../lib/housing";
 import { currentRole, roles } from "../../lib/session";
 
-type Week = { id: number; name: string; minimum_age: number; maximum_age: number|null; capacity: number; fee_cents: number | null; early_bird_cents:number|null; early_deadline:string|null; award_limit: number; start: string|null; end: string|null };
+type Week = { cabin_age_group_size:number; id: number; name: string; minimum_age: number; maximum_age: number|null; capacity: number; fee_cents: number | null; early_bird_cents:number|null; early_deadline:string|null; award_limit: number; start: string|null; end: string|null };
 type Staff = { id: number; name: string; skills:string[]; active:boolean; adult: boolean; cabin_ids:number[];availability?:StaffAvailability };
 type Dorm = {
   id: number; name: string; building: string; physical_beds: number; usable_beds: number; override_beds: number|null; active:boolean; needs_cleaning:boolean; configured:boolean;
@@ -30,7 +31,9 @@ type Dorm = {
   in_service: boolean; staff_slots: string[];
 };
 
-function DormForm({ locale, week, staff, dorm }: { locale: Locale; week: Week; staff: Staff[]; dorm: Dorm }) {
+type CabinPlanningTarget = {group:"female"|"male";min:number;max:number};
+
+function DormForm({ locale, week, staff, dorm, target }: { locale: Locale; week: Week; staff: Staff[]; dorm: Dorm; target?:CabinPlanningTarget }) {
   const t = copy[locale], h = housingCopy[locale];
   const a=staffAvailabilityCopy[locale];
   const eligible=staff.filter(member=>dorm.staff_slots.includes('guide:'+member.id)||(member.active&&member.cabin_ids.every(id=>id===dorm.id)&&member.skills.includes('guide')&&staffRoleEligible(member.availability,'guide',member.adult)));
@@ -42,11 +45,11 @@ function DormForm({ locale, week, staff, dorm }: { locale: Locale; week: Week; s
     <div className="grid">
       <label>{housingCopy[locale].weeklyBeds}<input type="number" name="usable" min={0} max={dorm.physical_beds} defaultValue={dorm.override_beds ?? ""} /></label>
       <label>{t.guests}<input type="number" name="guests" min={0} max={1000} defaultValue={dorm?.guest_beds ?? 0} required /></label>
-      <label>{t.group}<select name="group" defaultValue={dorm?.gender_group ?? ""} required>
+      <label>{t.group}<select name="group" defaultValue={dorm?.gender_group ?? target?.group ?? ""} required>
         <option value="" disabled>—</option><option value="female">{t.female}</option><option value="male">{t.male}</option>
       </select></label>
-      <label>{t.min}<input type="number" name="min" min={7} max={18} defaultValue={dorm?.minimum_age ?? week.minimum_age} required /></label>
-      <label><span>{t.max} <small>{h.openAge}</small></span><input type="number" name="max" min={7} max={18} defaultValue={(dorm.configured ? dorm.maximum_age : week.maximum_age) ?? ""} /></label>
+      <label>{t.min}<input type="number" name="min" min={7} max={18} defaultValue={dorm?.minimum_age ?? target?.min ?? week.minimum_age} required /></label>
+      <label><span>{t.max} <small>{h.openAge}</small></span><input type="number" name="max" min={7} max={18} defaultValue={(dorm.configured ? dorm.maximum_age : target?.max ?? week.maximum_age) ?? ""} /></label>
     </div>
     <label className="check"><input type="checkbox" name="active" defaultChecked={dorm?.in_service ?? true} />{t.active}</label>
     <fieldset><legend>{t.guides}</legend>{eligible.filter(member=>dorm.staff_slots.includes('guide:'+member.id)||member.availability?.state==='available').map(choice)}</fieldset>
@@ -69,22 +72,23 @@ function WeekForm({ locale, week }: { locale:Locale; week?:Week }) {
         start={week?.start ?? ""} end={week?.end ?? ""} required={!week} />
       <label>{t.min}<input name="min" type="number" min={7} max={18} defaultValue={week?.minimum_age} required /></label>
       <label><span>{t.max} <small>{h.openAge}</small></span><input name="max" type="number" min={7} max={18} defaultValue={week?.maximum_age ?? ""} /></label>
+      <label>{cabinPlanningCopy[locale].setting}<select name="cabinGroupSize" aria-describedby={"cabin-age-help-"+(week?.id ?? "new")} defaultValue={week?.cabin_age_group_size ?? 2}>{[1,2,3].map(size=><option key={size} value={size}>{size}</option>)}</select></label>
       <label>{t.capacity}<input name="capacity" type="number" min={1} max={250} defaultValue={week?.capacity ?? 250} required /></label>
       <label>{review.fee}<input name="fee" inputMode="decimal" defaultValue={((week?.fee_cents ?? 8000)/100).toFixed(2)} required /></label>
       <label>{campPaymentCopy[locale].earlyPrice}<input name="earlyPrice" inputMode="decimal" defaultValue={week?.early_bird_cents == null ? "" : (week.early_bird_cents/100).toFixed(2)} /></label>
       <label>{campPaymentCopy[locale].earlyDeadline}<input name="earlyDeadline" type="date" defaultValue={week?.early_deadline ?? ""} /></label>
       <label>{review.limit}<input id={week ? "scholarship-limit" : undefined} name="awardLimit" type="number" min={0} max={250} defaultValue={week?.award_limit ?? 0} required /></label>
-    </div><p className="muted">{campPaymentCopy[locale].earlyHelp}</p><button>{week ? t.saveWeek : h.newWeek}</button>
+    </div><p className="muted" id={"cabin-age-help-"+(week?.id ?? "new")}>{cabinPlanningCopy[locale].help}</p><p className="muted">{campPaymentCopy[locale].earlyHelp}</p><button>{week ? t.saveWeek : h.newWeek}</button>
   </AppForm>;
 }
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; week?: string }>;
+  searchParams: Promise<{ status?: string; week?: string;planningGroup?:string;planningMin?:string;planningMax?:string }>;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  const { status, week: requestedWeek } = await searchParams;
+  const { status, week: requestedWeek,planningGroup,planningMin,planningMax } = await searchParams;
   const t = copy[locale];
   const role = await currentRole();
   if (role === "health" || role === "kitchen") redirect("/"+locale+"/health");
@@ -125,6 +129,9 @@ export default async function Page({ params, searchParams }: {
     }
   }
 
+  const targetMin=integer(planningMin ?? null,7,18),targetMax=integer(planningMax ?? null,7,18);
+  const target:CabinPlanningTarget|undefined=week && (planningGroup==="female"||planningGroup==="male") && targetMin!==null && targetMax!==null && targetMin>=week.minimum_age && targetMax>=targetMin && (week.maximum_age===null||targetMax<=week.maximum_age) && targetMax-targetMin+1<=week.cabin_age_group_size ? {group:planningGroup,min:targetMin,max:targetMax} : undefined;
+
   return <>
     <header><div>
       <div className="brand"><Image src="/palabra-de-vida.png" width={118} height={54} alt="Palabra de Vida Panamá" /><small>{t.pilot}</small></div>
@@ -163,7 +170,9 @@ export default async function Page({ params, searchParams }: {
           <p>{week.name} · {t.capacity} {week.capacity} · {review.fee}: {week.fee_cents === null ? review.noFee : formatMoney(week.fee_cents,locale)}</p>
           {!editable ? <p>{t.reader}</p> : <WeekForm key={"week-form-" + week.id} locale={locale} week={week} />}
         </section>
-        <h2>{h.weeklyTeam}</h2>
+        <p><Link className="action-link secondary" href={"/"+locale+"/intake/cabin-planning?week="+week.id+"&from=week"}>{cabinPlanningCopy[locale].title}</Link></p>
+        <h2 id="weekly-dorm-setup">{h.weeklyTeam}</h2>
+        {target && <p className="notice">{cabinPlanningCopy[locale].configure}: <strong>{target.group==="female"?cabinPlanningCopy[locale].girls:cabinPlanningCopy[locale].boys} · {target.min}–{target.max}</strong>. {cabinPlanningCopy[locale].targetHelp}</p>}
         <div className="dorms">{dorms.map(dorm => {
           const guides = staff.filter(member => member.adult && dorm.staff_slots.includes("guide:"+member.id));
           const beds = Math.max(0,camperBedCapacity(dorm.usable_beds, dorm.guest_beds, guides.length) - dorm.occupants);
@@ -174,7 +183,7 @@ export default async function Page({ params, searchParams }: {
             <span className={state === "ready" && !dorm.needs_cleaning ? "badge" : "badge warn"}>{state !== "closed" && dorm.needs_cleaning ? h.cleaning : stateLabel}</span>
             <p>{t.open}: {beds}<br />{t.usable}: {dorm.usable_beds} · {t.guests}: {dorm.guest_beds}<br />{t.guides}: {guides.map(person => person.name).join(", ") || "—"}</p>
             {guides.some(member=>member.availability?.state!=='available')&&<p className="notice">{guides.filter(member=>member.availability?.state!=='available').map(member=>member.name+': '+staffAvailabilityCopy[locale][member.availability?.state??'unknown']).join(' · ')}</p>}
-            {editable && <details><summary>{h.configure}</summary><DormForm key={week.id+":"+dorm.id} locale={locale} week={week!} staff={staff} dorm={dorm} /></details>}
+            {editable && <details><summary>{h.configure}</summary><DormForm key={week.id+":"+dorm.id} locale={locale} week={week!} staff={staff} dorm={dorm} target={target} /></details>}
           </section>;
         })}</div>
 

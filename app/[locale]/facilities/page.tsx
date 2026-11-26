@@ -4,6 +4,7 @@ import { facilitiesCopy } from "../../../lib/facilities-copy";
 import { churchVisitsCopy } from "../../../lib/church-visits-copy";
 import { panamaDate } from "../../../lib/registration";
 import { requireReview, ReviewFrame } from "../intake/review-frame";
+import { FacilitiesMonthPicker } from "./month-picker";
 
 type Booking = {
   id:string; kind:"camp"|"event"|"visit"; name:string; start:string; end:string; blocked_until:string; rooms:string[];
@@ -13,18 +14,19 @@ const isoDay = (ms:number) => new Date(ms).toISOString().slice(0,10);
 const localTime = (value:string) => value.replace("T"," ");
 
 export default async function Facilities({ params, searchParams }: {
-  params:Promise<{locale:string}>;searchParams:Promise<{month?:string}>;
+  params:Promise<{locale:string}>;searchParams:Promise<{month?:string;history?:string}>;
 }) {
   const { locale, role } = await requireReview((await params).locale);
-  const { month:requested } = await searchParams;
+  const { month:requested, history } = await searchParams;
   const t = facilitiesCopy[locale], today = panamaDate();
   const month = requested && /^20\d\d-(0[1-9]|1[0-2])$/.test(requested) ? requested : today.slice(0,7);
+  const showPast = history === "1" || month < today.slice(0,7);
+  const historyQuery = showPast ? "&history=1" : "";
   const [year,number] = month.split("-").map(Number);
   const first = Date.UTC(year,number-1,1), next = Date.UTC(year,number,1);
   const gridStart = first - new Date(first).getUTCDay()*days;
   const gridEnd = next + ((7-new Date(next).getUTCDay())%7)*days;
   const db = await getDatabase();
-  const formatMonth = new Intl.DateTimeFormat(locale,{month:"long",year:"numeric",timeZone:"UTC"});
   const formatDay = new Intl.DateTimeFormat(locale,{weekday:"short",timeZone:"UTC"});
   const base = "/"+locale+"/facilities?month=";
   const previousMonth = isoDay(Date.UTC(year,number-2,1)).slice(0,7);
@@ -64,7 +66,10 @@ export default async function Facilities({ params, searchParams }: {
     <p className="muted">{t.inPanama} {t.campDates}</p>
     <section className="card">
       <div className="actions facilities-controls">
-        <Link href={base+previousMonth}>{t.monthBack}</Link><strong>{formatMonth.format(first)}</strong><Link href={base+nextMonth}>{t.monthNext}</Link>
+        {(showPast || previousMonth >= today.slice(0,7)) && <Link href={base+previousMonth+historyQuery}>{t.monthBack}</Link>}
+        <FacilitiesMonthPicker key={month+historyQuery} locale={locale} month={month} today={today} monthLabel={t.monthLabel} yearLabel={t.yearLabel}
+          showPast={showPast} showPastLabel={t.showPastDates} hidePastLabel={t.hidePastDates} />
+        <Link href={base+nextMonth+historyQuery}>{t.monthNext}</Link>
         <Link href={base+today.slice(0,7)}>{t.today}</Link>
         {upcoming && upcoming !== month && <Link href={base+upcoming}>{t.upcoming}</Link>}
       </div>

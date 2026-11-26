@@ -15,8 +15,8 @@ export async function requireReview(locale: string) {
   return { locale, role };
 }
 
-export function ReviewFrame({ locale, section, title, status, week, paper, backQuery, month, day, event, visit, scholarshipSeason, followups, season, children }: {
-  locale: Locale; section: string; title: string; status?: string; week?: number; paper?:boolean; backQuery?:string; month?:string; day?:string; event?:string; visit?:string; scholarshipSeason?:boolean; followups?:string; season?:string; children: ReactNode;
+export function ReviewFrame({ locale, section, title, status, week, paper, backQuery, month, day, event, visit, scholarshipSeason, followups, season, backLink, children }: {
+  locale: Locale; section: string; title: string; status?: string; week?: number; paper?:boolean; backQuery?:string; month?:string; day?:string; event?:string; visit?:string; scholarshipSeason?:boolean; followups?:string; season?:string; backLink?:{href:string;label:string}; children: ReactNode;
 }) {
   const t = reviewCopy[locale];
   const messages = {
@@ -45,7 +45,7 @@ export function ReviewFrame({ locale, section, title, status, week, paper, backQ
       </div>
     </div></header>
     <main><StaffNav locale={locale} week={week} active={section.startsWith("overview") ? "overview" : section.startsWith("staff") ? "staff" : section === "transport" ? "week" : section.startsWith("church-visits") ? "church-visits" : section.startsWith("events") ? "events" : section === "facilities" ? "facilities" : section === "departure" ? "departure" : section.startsWith("check-in") ? "check-in" : section === "intake/scholarships" ? "scholarships" : "registrations"} />
-      {section.startsWith("intake/") && section !== "intake/scholarships" && <Link href={"/" + locale + "/intake" + (backQuery ? "?"+backQuery : week ? "?week="+week : "")}>{t.back}</Link>}<h1>{title}</h1>
+      {backLink ? <Link href={backLink.href}>{backLink.label}</Link> : section.startsWith("intake/") && section !== "intake/scholarships" && <Link href={"/" + locale + "/intake" + (backQuery ? "?"+backQuery : week ? "?week="+week : "")}>{t.back}</Link>}<h1>{title}</h1>
       {status && Object.hasOwn(messages,status) && <p className="notice" role={status === "saved" ? "status" : "alert"}>{messages[status as keyof typeof messages]}</p>}
       {children}
     </main>

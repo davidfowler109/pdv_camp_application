@@ -26,6 +26,14 @@
 
 ## 2. Check in and assign
 
+### Registration-based cabin planning
+
+Each camp week has an editable target of one, two or three ages per cabin group, defaulting to two consecutive ages (7–8, 9–10, 11–12), anchored at the week's minimum age. The Registrations and Week setup pages link to Cabin planning. Leadership and Registration can view live pending and confirmed registration counts by age band and gender; released places are excluded. Ages use the camp start date, with a visible provisional warning for undated weeks. Existing cabin ranges remain editable and broad ranges are flagged against the target.
+
+The first planning view lists compatible cabin options and exceptions without reserving beds, assigning campers, or moving existing placements. Shared options are not summed across bands. Gender capacity totals count each configured, active cabin once, subtract guest beds and reserve at least two adult leader beds (or all assigned adult leader beds if more). Staffing and cleaning readiness remain separate visible checks before actual check-in. This view does not automatically rebalance cabins or replace the existing check-in confirmation and override workflow.
+
+The planning page returns to its originating Registrations or Week setup screen, retaining the selected week. Registration-group rows show counts and a compact names-and-ages drilldown rather than repeating all compatible cabins per camper. Leadership can select Configure cabins for a group to open weekly setup with that age/gender target; only unconfigured cabins receive those initial form values, and saving is explicit. Existing cabin ranges, staffing and placements are preserved until deliberately edited.
+
 Transportation setup — Configure each week's camp buses, routes, pickup and return drop-off stops, local times, and meeting instructions on the separate Transportation setup page linked from Week setup. Copy active arrangements from another week as independent records. Registration, printable forms, check-in, and departure use these weekly options while retaining Own transportation and actual-travel exceptions. Preserve registered plans when configuration changes and flag affected journeys for staff review. See the [Camp transportation specification](camp-transport-spec.md).
 
 - Use the [team walkthrough](pilot-walkthrough.html) as the arrival screen baseline. Camp Registration opens the expected bus roster and can look up campers across the week. Record actual arrival and bus, where applicable. Route unmatched arrivals to Camp Registration for follow-up.

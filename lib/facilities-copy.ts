@@ -1,5 +1,6 @@
 export const facilitiesCopy = {
   en:{
+    showPastDates:"Show past dates", hidePastDates:"Hide past dates",
     occupiedRooms:"Move or clear attendees in Event housing before removing their reserved rooms.",
     attendeeCapacity:"The attendance limit cannot be lower than the number of confirmed attendees.",
     attendeeAttendance:"Release the places of attendees using this option before turning it off.",
@@ -12,13 +13,14 @@ export const facilitiesCopy = {
     eventNameError:"Enter an event name of up to 120 characters.", turnoverError:"Enter a whole number from 0 to 10,080 for the cleaning buffer.", capacityError:"Enter an attendance limit from 1 to 1,000.", feeError:"Enter a fee like 80.00 or leave it blank.", staleEvent:"This event form is out of date. Reopen the event and try again.", unavailable:"Unable to save this event.",
     dateError:"Enter arrival and checkout dates and times. Checkout must be after arrival.", attendanceError:"Select day attendance, overnight attendance, or both.", roomsRequireOvernight:"Enable overnight attendance to reserve lodging rooms.", roomUnavailable:"One of the selected rooms is out of service or no longer available.",
     conflict:"Room already reserved", weekConflict:"The change overlaps an existing special-event or church-visit room reservation.",
-    monthBack:"Previous month", monthNext:"Next month", today:"Current month", upcoming:"Go to next booking",
+    monthBack:"Previous month", monthNext:"Next month", today:"Current month", upcoming:"Go to next booking", monthLabel:"Month", yearLabel:"Year",
     camp:"Camp session", event:"Special event", inPanama:"Dates and times are shown in Panama time.",
     campDates:"Camp cabins are reserved for the full listed camp dates. Special events and church visits use their arrival, checkout, and cleaning times.",
     selected:"Selected month", summary:"Bookings this month", roomCount:"Rooms", cleanUntil:"Cleaning buffer ends",
     none:"No bookings this month.", back:"Back to special events", open:"Open event",
   },
   es:{
+    showPastDates:"Mostrar fechas anteriores", hidePastDates:"Ocultar fechas anteriores",
     occupiedRooms:"Mueve o retira las asignaciones en Alojamiento del evento antes de quitar sus habitaciones reservadas.",
     attendeeCapacity:"El cupo no puede ser menor que el número de asistentes confirmados.",
     attendeeAttendance:"Libera los cupos de los asistentes que usan esta opción antes de desactivarla.",
@@ -31,7 +33,7 @@ export const facilitiesCopy = {
     eventNameError:"Escribe un nombre de hasta 120 caracteres.", turnoverError:"Indica un número entero de 0 a 10.080 para el tiempo de limpieza.", capacityError:"Indica un cupo de 1 a 1.000 asistentes.", feeError:"Indica una cuota como 80,00 o deja el campo en blanco.", staleEvent:"El formulario del evento está desactualizado. Vuelve a abrir el evento e inténtalo de nuevo.", unavailable:"No se pudo guardar el evento.",
     dateError:"Indica las fechas y horas de llegada y salida. La salida debe ser posterior a la llegada.", attendanceError:"Selecciona asistencia por el día, con alojamiento o ambas.", roomsRequireOvernight:"Activa la asistencia con alojamiento para reservar habitaciones.", roomUnavailable:"Una habitación seleccionada está fuera de servicio o ya no está disponible.",
     conflict:"Habitación ya reservada", weekConflict:"El cambio coincide con una reserva para un evento especial o una visita de iglesia.",
-    monthBack:"Mes anterior", monthNext:"Mes siguiente", today:"Mes actual", upcoming:"Ir a la próxima reserva",
+    monthBack:"Mes anterior", monthNext:"Mes siguiente", today:"Mes actual", upcoming:"Ir a la próxima reserva", monthLabel:"Mes", yearLabel:"Año",
     camp:"Sesión de campamento", event:"Evento especial", inPanama:"Las fechas y horas corresponden a Panamá.",
     campDates:"Las cabañas del campamento se reservan durante todas las fechas indicadas. Los eventos especiales y las visitas de iglesias usan las horas de llegada, salida y limpieza.",
     selected:"Mes seleccionado", summary:"Reservas de este mes", roomCount:"Habitaciones", cleanUntil:"Fin del tiempo de limpieza",

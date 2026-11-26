@@ -50,7 +50,7 @@ export async function changeLanguage(form: FormData) {
   if (section.startsWith("overview") && /^(?:20\d\d|undated)$/.test(string(form,"season"))) query.set("season",string(form,"season"));
   const from = string(form,"from");
   if (from) query.set("from",from.slice(0,500));
-  redirect("/" + locale + (/^(?:overview(?:\/review)?|register|transport|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
+  redirect("/" + locale + (/^(?:overview(?:\/review)?|register|transport|housing|staff|facilities|church-visits(?:\/(?:attendance|housing|itinerary|visitors|(?:register|estimate)\/[0-9a-f-]{36}))?|events(?:\/(?:attendees|housing|register\/[0-9a-f-]{36}))?|health|check-in(?:\/dorms)?|departure|intake(?:\/(?:cabin-planning|scholarships|new|print|[0-9a-f-]{36}))?)$/.test(section) ? "/" + section : "") + (query.size ? "?" + query : ""));
 }
 
 export async function login(form: FormData) {
@@ -88,6 +88,8 @@ export async function saveWeek(form: FormData) {
   const max = integer(form.get("max"), min ?? 7, 18);
   const openEnded = min === 18 && string(form,"max") === "";
   const capacity = integer(form.get("capacity"), 1, 250);
+  const cabinGroupSize = form.has("cabinGroupSize") ? integer(form.get("cabinGroupSize"),1,3) : null;
+  if(form.has("cabinGroupSize") && cabinGroupSize===null) finish(form,"invalid");
   const fee = moneyCents(string(form, "fee"));
   const earlyRaw = string(form,"earlyPrice"), earlyDeadline = string(form,"earlyDeadline");
   const earlyPrice = earlyRaw ? moneyCents(earlyRaw) : null;
@@ -100,8 +102,8 @@ export async function saveWeek(form: FormData) {
   const db = await getDatabase();
   if (!id) {
     const { rows } = await db.query<{ id:number }>(
-      "INSERT INTO camp_week(name,minimum_age,maximum_age,capacity,fee_cents,award_limit,starts_on,ends_on,early_bird_cents,early_bird_ends_on) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
-      [name,min,max,capacity,fee,awardLimit,start,end,earlyPrice,earlyDeadline || null],
+      "INSERT INTO camp_week(name,minimum_age,maximum_age,capacity,fee_cents,award_limit,starts_on,ends_on,early_bird_cents,early_bird_ends_on,cabin_age_group_size) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id",
+      [name,min,max,capacity,fee,awardLimit,start,end,earlyPrice,earlyDeadline || null,cabinGroupSize ?? 2],
     );
     form.set("week",String(rows[0].id));
     finish(form,"saved");
@@ -116,7 +118,7 @@ export async function saveWeek(form: FormData) {
       const rooms = (await lockFacilityRooms(tx,rows.map(row => row.dorm_id))).filter(room => room.active).map(room => room.id);
       if (await roomConflict(tx,rooms,start,endOfCampBlock(end),0,null,false)) return "facilityConflict" as const;
     }
-    await tx.query("UPDATE camp_week SET name=$2, minimum_age=$3, maximum_age=$4, capacity=$5, fee_cents=$6, award_limit=$7, starts_on=$8, ends_on=$9, early_bird_cents=$10, early_bird_ends_on=$11 WHERE id=$1", [id,name,min,max,capacity,fee,awardLimit,start || null,end || null,earlyPrice,earlyDeadline || null]);
+    await tx.query("UPDATE camp_week SET name=$2, minimum_age=$3, maximum_age=$4, capacity=$5, fee_cents=$6, award_limit=$7, starts_on=$8, ends_on=$9, early_bird_cents=$10, early_bird_ends_on=$11, cabin_age_group_size=COALESCE($12,cabin_age_group_size) WHERE id=$1", [id,name,min,max,capacity,fee,awardLimit,start || null,end || null,earlyPrice,earlyDeadline || null,cabinGroupSize]);
     return true;
   });
   finish(form, updated === "facilityConflict" ? updated : updated ? "saved" : "invalid");

@@ -1,3 +1,4 @@
+import { cabinPlanningCopy } from "../../../lib/cabin-planning-copy";
 import {campOverviewCopy} from "../../../lib/camp-overview-copy";
 import { AppForm } from "../app-form";
 import Link from "../app-link";
@@ -96,6 +97,7 @@ export default async function Intake({ params, searchParams }: {
           <RegistrationLink key={week.id} locale={locale} path={"/"+locale+"/register?week="+week.id} label={t.publicLink} />
         </div>
       </div>
+      <p><Link className="action-link secondary" href={base+"/cabin-planning?week="+week.id+"&from=registrations"}>{cabinPlanningCopy[locale].title}</Link></p>
       <section className="follow-up-queue" aria-labelledby="follow-up-queue-title">
         <h2 id="follow-up-queue-title">{r.followupQueue}</h2>
         <div className="actions">
